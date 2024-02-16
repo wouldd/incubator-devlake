@@ -17,15 +17,14 @@
  */
 
 import { DOC_URL } from '@/release';
-import { IPluginConfig } from '@/types';
 
 import Icon from './assets/icon.svg?react';
 
-export const BitbucketServerConfig: IPluginConfig = {
+export const BitBucketServerConfig = {
   plugin: 'bitbucket_server',
-  name: 'Bitbucket Server',
-  icon: ({ color }) => <Icon fill={color} />,
-  sort: 3,
+  name: 'BitBucket Data Center',
+  icon: Icon,
+  sort: 5,
   connection: {
     docLink: DOC_URL.PLUGIN.BITBUCKET_SERVER.BASIS,
     fields: [
@@ -42,15 +41,16 @@ export const BitbucketServerConfig: IPluginConfig = {
       {
         key: 'rateLimitPerHour',
         subLabel:
-          'By default, DevLake uses dynamic rate limit for optimized data collection for Bitbucket Server. But you can adjust the collection speed by entering a fixed value.',
+          'By default, DevLake uses dynamic rate limit for optimized data collection for BitBucket Server. But you can adjust the collection speed by entering a fixed value.',
         learnMore: DOC_URL.PLUGIN.BITBUCKET_SERVER.RATE_LIMIT,
         externalInfo:
-          'The maximum rate limit for different entities in Bitbucket Server is 60,000 or 1,000 requests/hour.',
+          'The maximum rate limit for different entities in BitBucket Server is 60,000 or 1,000 requests/hour.',
         defaultValue: 1000,
       },
     ],
   },
   dataScope: {
+    localSearch: true,
     searchPlaceholder: 'Enter the keywords to search for repositories that you have read access',
     title: 'Repositories',
     millerColumn: {
