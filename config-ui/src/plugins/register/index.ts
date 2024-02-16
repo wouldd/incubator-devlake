@@ -23,6 +23,7 @@ import { BambooConfig } from './bamboo';
 import { BitbucketConfig } from './bitbucket';
 import { BitbucketServerConfig } from './bitbucket-server';
 import { CircleCIConfig } from './circleci';
+import { BitBucketServerConfig } from './bitbucket-server';
 import { GitHubConfig } from './github';
 import { GerritConfig } from './gerrit';
 import { GitLabConfig } from './gitlab';
@@ -39,8 +40,8 @@ export const pluginConfigs: IPluginConfig[] = [
   AzureConfig,
   AzureGoConfig,
   BambooConfig,
-  BitbucketConfig,
-  BitbucketServerConfig,
+  BitBucketConfig,
+  BitBucketServerConfig,
   CircleCIConfig,
   GerritConfig,
   GitHubConfig,
