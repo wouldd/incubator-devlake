@@ -30,6 +30,7 @@ import { GitLabTransformation } from '@/plugins/register/gitlab';
 import { JenkinsTransformation } from '@/plugins/register/jenkins';
 import { BitbucketTransformation } from '@/plugins/register/bitbucket';
 import { BitbucketServerTransformation } from '@/plugins/register/bitbucket-server';
+import { BitbucketServerTransformation } from '@/plugins/register/bitbucket-server';
 import { AzureTransformation } from '@/plugins/register/azure';
 import { TapdTransformation } from '@/plugins/register/tapd';
 import { BambooTransformation } from '@/plugins/register/bamboo';
@@ -212,14 +213,6 @@ export const ScopeConfigForm = ({
 
               {plugin === 'bitbucket_server' && (
                 <BitbucketServerTransformation
-                  entities={entities}
-                  transformation={transformation}
-                  setTransformation={setTransformation}
-                />
-              )}
-
-              {plugin === 'circleci' && (
-                <CircleCITransformation
                   entities={entities}
                   transformation={transformation}
                   setTransformation={setTransformation}
