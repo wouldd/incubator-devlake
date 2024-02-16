@@ -78,7 +78,7 @@ func TestConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, 
 	// test connection
 	result, err := testConnection(context.TODO(), connection)
 	if err != nil {
-		return nil, plugin.WrapTestConnectionErrResp(basicRes, err)
+		return nil, err
 	}
 	return &plugin.ApiResourceOutput{Body: result, Status: http.StatusOK}, nil
 }
@@ -87,11 +87,10 @@ func TestConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, 
 // @Summary test bitbucket connection
 // @Description Test bitbucket Connection
 // @Tags plugins/bitbucket
-// @Param connectionId path int true "connection ID"
 // @Success 200  {object} BitBucketTestConnResponse "Success"
 // @Failure 400  {string} errcode.Error "Bad Request"
 // @Failure 500  {string} errcode.Error "Internal Error"
-// @Router /plugins/bitbucket_server/connections/{connectionId}/test [POST]
+// @Router /plugins/bitbucket_server/{connectionId}/test [POST]
 func TestExistingConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	connection, err := dsHelper.ConnApi.FindByPk(input)
 	if err != nil {
@@ -100,7 +99,7 @@ func TestExistingConnection(input *plugin.ApiResourceInput) (*plugin.ApiResource
 	// test connection
 	result, err := testConnection(context.TODO(), connection.BitbucketServerConn)
 	if err != nil {
-		return nil, plugin.WrapTestConnectionErrResp(basicRes, err)
+		return nil, err
 	}
 	return &plugin.ApiResourceOutput{Body: result, Status: http.StatusOK}, nil
 }
