@@ -20,7 +20,6 @@ package tasks
 import (
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
@@ -37,7 +36,7 @@ var CollectApiPullRequestsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiPullRequests",
 	EntryPoint:       CollectApiPullRequests,
 	EnabledByDefault: true,
-	Description:      "Collect PullRequests data from Azure DevOps API, supports timeFilter but not diffSync.",
+	Description:      "Collect PullRequests data from Azure DevOps API.",
 	DomainTypes:      []string{plugin.DOMAIN_TYPE_CROSS, plugin.DOMAIN_TYPE_CODE_REVIEW},
 	DependencyTables: []string{},
 	ProductTables:    []string{RawPullRequestTable},
@@ -52,12 +51,7 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 		Options: data.Options,
 	}
 
-	apiCollector, err := api.NewStatefulApiCollector(*rawDataSubTaskArgs)
-	if err != nil {
-		return err
-	}
-
-	err = apiCollector.InitCollector(api.ApiCollectorArgs{
+	collector, err := api.NewApiCollector(api.ApiCollectorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,
 		ApiClient:          data.ApiClient,
 		PageSize:           100,
@@ -67,11 +61,6 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 			query.Set("searchCriteria.status", "all")
 			query.Set("$skip", fmt.Sprint(reqData.Pager.Skip))
 			query.Set("$top", fmt.Sprint(reqData.Pager.Size))
-
-			if apiCollector.GetSince() != nil {
-				query.Set("searchCriteria.queryTimeRangeType", "created")
-				query.Set("searchCriteria.minTime", apiCollector.GetSince().Format(time.RFC3339))
-			}
 			return query, nil
 		},
 		ResponseParser: ParseRawMessageFromValue,
@@ -82,5 +71,5 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 		return err
 	}
 
-	return apiCollector.Execute()
+	return collector.Execute()
 }
