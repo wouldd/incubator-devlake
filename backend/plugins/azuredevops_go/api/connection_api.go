@@ -18,12 +18,13 @@ limitations under the License.
 package api
 
 import (
+	"net/http"
+
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
 	"github.com/apache/incubator-devlake/plugins/azuredevops_go/models"
 	"github.com/apache/incubator-devlake/server/api/shared"
-	"net/http"
 )
 
 type AzuredevopsTestConnResponse struct {
@@ -51,7 +52,7 @@ func TestConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, 
 		},
 		AzuredevopsConn: conn,
 	}
-	vsc := newVsClient(&connection, "https://app.vssps.visualstudio.com/")
+	vsc := newVsClient(&connection, "https://azd.orbis.app/tfs/Main/")
 
 	_, err := vsc.UserProfile()
 	if err != nil {
@@ -79,7 +80,7 @@ func TestExistingConnection(input *plugin.ApiResourceInput) (*plugin.ApiResource
 		return nil, errors.BadInput.Wrap(err, "can't read connection from database")
 	}
 
-	vsc := newVsClient(connection, "https://app.vssps.visualstudio.com/")
+	vsc := newVsClient(connection, "https://azd.orbis.app/tfs/Main/")
 	_, err = vsc.UserProfile()
 	if err != nil {
 		return nil, err

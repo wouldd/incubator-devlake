@@ -19,18 +19,25 @@ package api
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
 	dsmodels "github.com/apache/incubator-devlake/helpers/pluginhelper/api/models"
+	"github.com/apache/incubator-devlake/impls/logruslog"
 	"github.com/apache/incubator-devlake/plugins/azuredevops_go/models"
-	"net/url"
-	"strings"
 )
 
 const (
 	itemsPerPage = 100
 	idSeparator  = "/"
+)
+
+var (
+	remotehelperLog = logruslog.Global.Nested("azuredevops-go-remotehelper")
+	
 )
 
 func listAzuredevopsRemoteScopes(
@@ -43,6 +50,7 @@ func listAzuredevopsRemoteScopes(
 	nextPage *AzuredevopsRemotePagination,
 	err errors.Error,
 ) {
+	remotehelperLog.Info("listAzuredevopsRemoteScopes called with groupId %s", groupId)
 	if page.Top == 0 {
 		page.Top = itemsPerPage
 	}
@@ -51,6 +59,7 @@ func listAzuredevopsRemoteScopes(
 		id := strings.Split(groupId, idSeparator)
 		return listAzuredevopsRepos(apiClient, id[0], id[1])
 	}
+	remotehelperLog.Info("Return list of all projects ")
 	return listAzuredevopsProjects(connection, apiClient, page)
 }
 
@@ -62,47 +71,38 @@ func listAzuredevopsProjects(
 	children []dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo],
 	nextPage *AzuredevopsRemotePagination,
 	err errors.Error) {
-
+	remotehelperLog.Info("Querying Azure DevOps for projects")
 	query := url.Values{}
-	query.Set("$top", fmt.Sprint(page.Top))
-	query.Set("$skip", fmt.Sprint(page.Skip))
-	query.Set("api-version", "7.1")
+	//query.Set("$top", fmt.Sprint(page.Top))
+	//query.Set("$skip", fmt.Sprint(page.Skip))
+	//query.Set("api-version", "7.1")
 
-	vsc := newVsClient(connection, "https://app.vssps.visualstudio.com")
-
-	profile, err := vsc.UserProfile()
-	if err != nil {
-		return nil, nil, err
-	}
-	accounts, err := vsc.UserAccounts(profile.Id)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	var data struct {
 		Projects []dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsProject] `json:"value"`
 	}
 
-	for _, v := range accounts {
-		res, err := apiClient.Get(fmt.Sprintf("%s/_apis/projects", v.AccountName), query, nil)
+	
+	res, err := apiClient.Get("Main/_apis/projects", query, nil)
+	remotehelperLog.Info("response from api call %s", res)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = api.UnmarshalResponse(res, &data)
+	if err != nil {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = api.UnmarshalResponse(res, &data)
-		if err != nil {
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		for _, vv := range data.Projects {
-			children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo]{
-				Id:   v.AccountName + idSeparator + vv.Name,
-				Type: api.RAS_ENTRY_TYPE_GROUP,
-				Name: vv.Name,
-			})
-		}
 	}
+
+	for _, vv := range data.Projects {
+		children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo]{
+			Id:   "Main"+ idSeparator + vv.Name,
+			Type: api.RAS_ENTRY_TYPE_GROUP,
+			Name: vv.Name,
+		})
+	}
+	
 
 	if len(data.Projects) >= itemsPerPage {
 		nextPage = &AzuredevopsRemotePagination{
@@ -120,9 +120,9 @@ func listAzuredevopsRepos(
 	children []dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo],
 	nextPage *AzuredevopsRemotePagination,
 	err errors.Error) {
-
+	remotehelperLog.Info("Querying Azure DevOps for repos in org %s, project: %s", orgId, projectId)
 	query := url.Values{}
-	query.Set("api-version", "7.1")
+	//query.Set("api-version", "7.1")
 
 	var data struct {
 		Repos []AzuredevopsApiRepo `json:"value"`

@@ -18,8 +18,9 @@ limitations under the License.
 package api
 
 import (
-	"github.com/apache/incubator-devlake/plugins/azuredevops_go/models"
 	"time"
+
+	"github.com/apache/incubator-devlake/plugins/azuredevops_go/models"
 )
 
 type AzuredevopsRemotePagination struct {

@@ -27,9 +27,6 @@ FROM --platform=linux/amd64 debian:bullseye as debian-amd64
 RUN apt-get update
 RUN apt-get install -y libssh2-1-dev libssl-dev zlib1g-dev
 
-FROM --platform=linux/arm64 debian:bullseye as debian-arm64
-RUN apt-get update
-RUN apt-get install -y libssh2-1-dev libssl-dev zlib1g-dev
 
 FROM --platform=$BUILDPLATFORM golang:1.20.4-bullseye as builder
 
@@ -42,9 +39,6 @@ ARG HTTPS_PROXY=
 RUN apt-get update
 RUN apt-get install -y gcc binutils libfindbin-libs-perl cmake libssh2-1-dev libssl-dev zlib1g-dev
 
-RUN if [ "$(arch)" != "aarch64" ] ; then \
-        apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu ; \
-    fi
 RUN if [ "$(arch)" != "x86_64" ] ; then \
         apt-get install -y gcc-x86-64-linux-gnu binutils-x86-64-linux-gnu ; \
     fi
@@ -55,10 +49,6 @@ RUN go install github.com/swaggo/swag/cmd/swag@v1.16.1
 COPY --from=debian-amd64 /usr/include /rootfs-amd64/usr/include
 COPY --from=debian-amd64 /usr/lib/x86_64-linux-gnu /rootfs-amd64/usr/lib/x86_64-linux-gnu
 COPY --from=debian-amd64 /lib/x86_64-linux-gnu /rootfs-amd64/lib/x86_64-linux-gnu
-
-COPY --from=debian-arm64 /usr/include /rootfs-arm64/usr/include
-COPY --from=debian-arm64 /usr/lib/aarch64-linux-gnu /rootfs-arm64/usr/lib/aarch64-linux-gnu
-COPY --from=debian-arm64 /lib/aarch64-linux-gnu /rootfs-arm64/lib/aarch64-linux-gnu
 
 
 RUN for arch in aarch64 x86_64 ; do \

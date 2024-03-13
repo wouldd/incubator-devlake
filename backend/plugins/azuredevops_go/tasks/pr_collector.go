@@ -19,11 +19,12 @@ package tasks
 
 import (
 	"fmt"
+	"net/url"
+	"time"
+
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
-	"net/url"
-	"time"
 )
 
 func init() {
@@ -60,7 +61,7 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,
 		ApiClient:          data.ApiClient,
 		PageSize:           100,
-		UrlTemplate:        "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/git/repositories/{{ .Params.RepositoryId }}/pullrequests?api-version=7.1",
+		UrlTemplate:        "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/git/repositories/{{ .Params.RepositoryId }}/pullrequests?api-version=7.0",
 		Query: func(reqData *api.RequestData) (url.Values, errors.Error) {
 			query := url.Values{}
 			query.Set("searchCriteria.status", "all")

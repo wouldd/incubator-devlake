@@ -18,12 +18,13 @@ limitations under the License.
 package tasks
 
 import (
+	"reflect"
+
 	"github.com/apache/incubator-devlake/core/dal"
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
 	"github.com/apache/incubator-devlake/plugins/azuredevops_go/models"
-	"reflect"
 )
 
 func init() {
@@ -65,7 +66,7 @@ func CollectRecords(taskCtx plugin.SubTaskContext) errors.Error {
 		ApiClient:          data.ApiClient,
 		Input:              iterator,
 		Incremental:        false,
-		UrlTemplate:        "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/build/builds/{{ .Input.AzuredevopsId }}/Timeline?api-version=7.1",
+		UrlTemplate:        "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/build/builds/{{ .Input.AzuredevopsId }}/Timeline?api-version=7.0",
 		Query:              BuildPaginator(true),
 		ResponseParser:     ParseRawMessageFromRecords,
 		AfterResponse:      ignoreDeletedBuilds, // Ignore the 404 response if builds are deleted during the collection

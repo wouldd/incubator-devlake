@@ -23,10 +23,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"github.com/apache/incubator-devlake/core/errors"
-	"github.com/apache/incubator-devlake/core/plugin"
-	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"net"
 	"net/http"
 	neturl "net/url"
@@ -34,6 +30,11 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/apache/incubator-devlake/core/errors"
+	"github.com/apache/incubator-devlake/core/plugin"
+	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/client"
@@ -194,7 +195,7 @@ func refreshCloneProgress(subTaskCtx plugin.SubTaskContext, done chan struct{}, 
 }
 
 func isAzureRepo(ctx context.Context, repoUrl string) bool {
-	return strings.Contains(repoUrl, "dev.azure.com")
+	return strings.Contains(repoUrl, "azd.orbis.app")
 }
 
 func withTempDirectory(f func(tempDir string) (RepoCollector, error)) (RepoCollector, errors.Error) {

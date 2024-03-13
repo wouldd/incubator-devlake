@@ -18,7 +18,7 @@
 # https://tutorialedge.net/golang/makefiles-for-go-developers/
 
 SHA ?= $(shell git show -s --format=%h)
-TAG ?= $(shell git tag --points-at HEAD)
+TAG ?= dw-devlake
 IMAGE_REPO ?= "apache"
 VERSION = $(TAG)@$(SHA)
 

@@ -120,9 +120,7 @@ export const ScopeConfigForm = ({
           <>
             To learn about how {config.name} transformation is used in DevLake,
             {/* @ts-ignore */}
-            <ExternalLink link={DOC_URL.PLUGIN[config.plugin.toLocaleUpperCase()].TRANSFORMATION}>
-              check out this doc
-            </ExternalLink>
+            
             .
           </>
         }

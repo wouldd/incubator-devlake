@@ -20,11 +20,12 @@ package models
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
+
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/core/utils"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
-	"net/http"
 )
 
 var _ plugin.ApiConnection = (*AzuredevopsConn)(nil)
@@ -59,7 +60,7 @@ type AzuredevopsConn struct {
 }
 
 func (conn *AzuredevopsConn) GetEndpoint() string {
-	return "https://dev.azure.com"
+	return "https://azd.orbis.app/tfs/"
 }
 
 func (conn *AzuredevopsConn) GetProxy() string {
@@ -79,7 +80,7 @@ type AzuredevopsConnection struct {
 }
 
 func (c AzuredevopsConnection) GetEndpoint() string {
-	return "https://dev.azure.com"
+	return "https://azd.orbis.app/tfs/"
 }
 
 func (c AzuredevopsConnection) GetProxy() string {
