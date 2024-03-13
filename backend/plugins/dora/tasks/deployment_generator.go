@@ -18,14 +18,17 @@ limitations under the License.
 package tasks
 
 import (
+	"reflect"
+
 	"github.com/apache/incubator-devlake/core/dal"
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/models/domainlayer"
 	"github.com/apache/incubator-devlake/core/models/domainlayer/devops"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
-	"reflect"
 )
+
+const DORAGenerateDeployment = "dora.generateDeployments"
 
 var DeploymentGeneratorMeta = plugin.SubTaskMeta{
 	Name:             "generateDeployments",
@@ -78,8 +81,8 @@ func GenerateDeployment(taskCtx plugin.SubTaskContext) errors.Error {
 			dal.Where("p.cicd_scope_id = ?", data.Options.ScopeId),
 		)
 		// Clear previous results from the cicd_scope_id
-		deleteSql := `DELETE FROM cicd_deployments WHERE cicd_scope_id = ?;`
-		err := db.Exec(deleteSql, data.Options.ScopeId)
+		deleteSql := `DELETE FROM cicd_deployments WHERE cicd_scope_id = ? and subtask_name = ?;`
+		err := db.Exec(deleteSql, data.Options.ScopeId, DORAGenerateDeployment)
 		if err != nil {
 			return errors.Default.Wrap(err, "error deleting previous deployments")
 		}
@@ -98,8 +101,8 @@ func GenerateDeployment(taskCtx plugin.SubTaskContext) errors.Error {
 					LEFT JOIN project_mapping pm ON (pm.table = 'cicd_scopes' AND pm.row_id = cd.cicd_scope_id)
 					WHERE pm.project_name = ?
 				) AS subquery
-				);`
-		err := db.Exec(deleteSql, data.Options.ProjectName)
+				) AND subtask_name = ?;`
+		err := db.Exec(deleteSql, data.Options.ProjectName, DORAGenerateDeployment)
 		if err != nil {
 			return errors.Default.Wrap(err, "error deleting previous deployments")
 		}
@@ -152,6 +155,7 @@ func GenerateDeployment(taskCtx plugin.SubTaskContext) errors.Error {
 					domainDeployment.Environment = devops.TESTING
 				}
 			}
+			domainDeployment.SubtaskName = DORAGenerateDeployment
 			return []interface{}{domainDeployment}, nil
 		},
 	})

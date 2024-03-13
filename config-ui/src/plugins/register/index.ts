@@ -20,7 +20,8 @@ import { IPluginConfig } from '@/types';
 
 import { AzureConfig, AzureGoConfig } from './azure';
 import { BambooConfig } from './bamboo';
-import { BitBucketConfig } from './bitbucket';
+import { BitbucketConfig } from './bitbucket';
+import { BitbucketServerConfig } from './bitbucket-server';
 import { CircleCIConfig } from './circleci';
 import { BitBucketServerConfig } from './bitbucket-server';
 import { GitHubConfig } from './github';

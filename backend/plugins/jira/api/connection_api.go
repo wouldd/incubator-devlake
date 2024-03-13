@@ -71,7 +71,7 @@ func testConnection(ctx context.Context, connection models.JiraConn) (*JiraTestC
 		return nil, errors.NotFound.New(fmt.Sprintf("Seems like an invalid Endpoint URL, please try %s", restUrl.String()))
 	}
 	if res.StatusCode == http.StatusUnauthorized {
-		return nil, errors.HttpStatus(http.StatusBadRequest).New("Error username/password")
+		return nil, errors.HttpStatus(http.StatusBadRequest).New("Error credential")
 	}
 
 	resBody := &models.JiraServerInfo{}
@@ -100,7 +100,7 @@ func testConnection(ctx context.Context, connection models.JiraConn) (*JiraTestC
 
 	errMsg := ""
 	if res.StatusCode == http.StatusUnauthorized {
-		return nil, errors.HttpStatus(http.StatusBadRequest).New("Please check your username/password")
+		return nil, errors.HttpStatus(http.StatusBadRequest).New("Please check your credential")
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -146,10 +146,11 @@ func TestConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, 
 // @Summary test jira connection
 // @Description Test Jira Connection
 // @Tags plugins/jira
+// @Param connectionId path int true "connection ID"
 // @Success 200  {object} JiraTestConnResponse "Success"
 // @Failure 400  {string} errcode.Error "Bad Request"
 // @Failure 500  {string} errcode.Error "Internal Error"
-// @Router /plugins/jira/{connectionId}/test [POST]
+// @Router /plugins/jira/connections/{connectionId}/test [POST]
 func TestExistingConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	connection, err := dsHelper.ConnApi.GetMergedConnection(input)
 	if err != nil {
