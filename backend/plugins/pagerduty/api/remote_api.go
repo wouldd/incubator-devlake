@@ -18,96 +18,129 @@ limitations under the License.
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+
+	"github.com/apache/incubator-devlake/core/models/common"
 
 	"github.com/apache/incubator-devlake/core/errors"
-	"github.com/apache/incubator-devlake/core/models/common"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
 	dsmodels "github.com/apache/incubator-devlake/helpers/pluginhelper/api/models"
-	"github.com/apache/incubator-devlake/plugins/opsgenie/models"
-	"github.com/apache/incubator-devlake/plugins/opsgenie/models/raw"
+	"github.com/apache/incubator-devlake/plugins/pagerduty/models"
+	"github.com/apache/incubator-devlake/plugins/pagerduty/models/raw"
 )
 
-type OpsgenieRemotePagination struct {
-	Page    int `json:"page"`
-	PerPage int `json:"per_page"`
+type PagerdutyRemotePagination struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
 }
 
 type ServiceResponse struct {
-	TotalCount int           `json:"totalCount"`
-	Data       []raw.Service `json:"data"`
+	Offset   int           `json:"offset"`
+	Limit    int           `json:"limit"`
+	More     bool          `json:"more"`
+	Total    int           `json:"total"`
+	Services []raw.Service `json:"services"`
 }
 
-func listOpsgenieRemoteScopes(
-	connection *models.OpsgenieConnection,
+func queryPagerdutyRemoteScopes(
+	connection *models.PagerDutyConnection,
 	apiClient plugin.ApiClient,
 	groupId string,
-	page OpsgenieRemotePagination,
+	page PagerdutyRemotePagination,
+	search string,
 ) (
 	children []dsmodels.DsRemoteApiScopeListEntry[models.Service],
-	nextPage *OpsgenieRemotePagination,
+	nextPage *PagerdutyRemotePagination,
 	err errors.Error,
 ) {
-	if page.Page == 0 {
-		page.Page = 1
-	}
-	if page.PerPage == 0 {
-		page.PerPage = 100
-	}
-
-	query := url.Values{
-		"page":     []string{fmt.Sprintf("%v", page.Page)},
-		"per_page": []string{fmt.Sprintf("%v", page.PerPage)},
-	}
-
-	res, err := apiClient.Get("v1/services", query, nil)
+	var res *http.Response
+	res, err = apiClient.Get("/services", url.Values{
+		"offset": {strconv.Itoa(page.Offset)},
+		"limit":  {strconv.Itoa(page.Limit)},
+		"search": {search},
+	}, nil)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 	response := &ServiceResponse{}
 	err = api.UnmarshalResponse(res, response)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
-
 	// append service to output
-	for _, service := range response.Data {
+	for _, service := range response.Services {
 		children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.Service]{
 			Type:     api.RAS_ENTRY_TYPE_SCOPE,
 			Id:       service.Id,
 			Name:     service.Name,
 			FullName: service.Name,
 			Data: &models.Service{
-				Url:    service.Links.Web,
-				Id:     service.Id,
-				Name:   service.Name,
-				TeamId: service.TeamId,
+				Url:  service.HtmlUrl,
+				Id:   service.Id,
+				Name: service.Name,
 				Scope: common.Scope{
-					NoPKModel:    common.NoPKModel{},
+					NoPKModel: common.NoPKModel{
+						CreatedAt: service.CreatedAt,
+					},
 					ConnectionId: connection.ID,
 				},
 			},
 		})
 	}
 
+	// check service count
+	if response.More {
+		nextPage = &PagerdutyRemotePagination{
+			Offset: page.Offset + page.Limit,
+			Limit:  page.Limit,
+		}
+	}
+
+	return
+}
+
+func listPagerdutyRemoteScopes(
+	connection *models.PagerDutyConnection,
+	apiClient plugin.ApiClient,
+	groupId string,
+	page PagerdutyRemotePagination,
+) (
+	[]dsmodels.DsRemoteApiScopeListEntry[models.Service],
+	*PagerdutyRemotePagination,
+	errors.Error,
+) {
+	return queryPagerdutyRemoteScopes(connection, apiClient, groupId, page, "")
+}
+
+func searchPagerdutyRemoteScopes(
+	apiClient plugin.ApiClient,
+	params *dsmodels.DsRemoteApiScopeSearchParams,
+) (
+	children []dsmodels.DsRemoteApiScopeListEntry[models.Service],
+	err errors.Error,
+) {
+	children, _, err = queryPagerdutyRemoteScopes(nil, apiClient, "", PagerdutyRemotePagination{
+		Offset: (params.Page - 1) * params.PageSize,
+		Limit:  params.PageSize,
+	}, params.Search)
 	return
 }
 
 // RemoteScopes list all available scopes (services) for this connection
 // @Summary list all available scopes (services) for this connection
 // @Description list all available scopes (services) for this connection
-// @Tags plugins/opsgenie
+// @Tags plugins/pagerduty
 // @Accept application/json
 // @Param connectionId path int false "connection ID"
 // @Param groupId query string false "group ID"
 // @Param pageToken query string false "page Token"
-// @Success 200  {object} dsmodels.DsRemoteApiScopeList[models.Service]
+// @Success 200  {object} RemoteScopesOutput
 // @Failure 400  {object} shared.ApiBody "Bad Request"
 // @Failure 500  {object} shared.ApiBody "Internal Error"
-// @Router /plugins/opsgenie/connections/{connectionId}/remote-scopes [GET]
+// @Router /plugins/pagerduty/connections/{connectionId}/remote-scopes [GET]
 func RemoteScopes(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	return raScopeList.Get(input)
 }
@@ -115,17 +148,26 @@ func RemoteScopes(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, er
 // SearchRemoteScopes use the Search API and only return project
 // @Summary use the Search API and only return project
 // @Description use the Search API and only return project
-// @Tags plugins/opsgenie
+// @Tags plugins/pagerduty
 // @Accept application/json
 // @Param connectionId path int false "connection ID"
 // @Param search query string false "search"
 // @Param page query int false "page number"
 // @Param pageSize query int false "page size per page"
-// @Success 200  {object} dsmodels.DsRemoteApiScopeList[models.Service]
+// @Success 200  {object} SearchRemoteScopesOutput
 // @Failure 400  {object} shared.ApiBody "Bad Request"
 // @Failure 500  {object} shared.ApiBody "Internal Error"
-// @Router /plugins/opsgenie/connections/{connectionId}/search-remote-scopes [GET]
+// @Router /plugins/pagerduty/connections/{connectionId}/search-remote-scopes [GET]
 func SearchRemoteScopes(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
-	// Not supported
-	return &plugin.ApiResourceOutput{Body: nil, Status: http.StatusMethodNotAllowed}, nil
+	return raScopeSearch.Get(input)
+}
+
+// @Summary Remote server API proxy
+// @Description Forward API requests to the specified remote server
+// @Param connectionId path int true "connection ID"
+// @Param path path string true "path to a API endpoint"
+// @Tags plugins/github
+// @Router /plugins/github/connections/{connectionId}/proxy/{path} [GET]
+func Proxy(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	return raProxy.Proxy(input)
 }
