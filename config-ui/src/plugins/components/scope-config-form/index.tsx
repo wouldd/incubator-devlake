@@ -193,6 +193,14 @@ export const ScopeConfigForm = ({
                 />
               )}
 
+              {plugin === 'azuredevops_go' && (
+                <AzureTransformation
+                  entities={entities}
+                  transformation={transformation}
+                  setTransformation={setTransformation}
+                />
+              )}
+
               {plugin === 'bamboo' && (
                 <BambooTransformation
                   entities={entities}

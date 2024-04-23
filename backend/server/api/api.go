@@ -49,6 +49,7 @@ WARNING: Performing migration may wipe collected data for consistency and re-col
 To proceed, please send a request to <config-ui-endpoint>/api/proceed-db-migration (or <devlake-endpoint>/proceed-db-migration).
 Alternatively, you may downgrade back to the previous DevLake version.
 `
+const DB_MIGRATING = `Database migration is in progress. Please wait until it is completed.`
 
 var basicRes context.BasicRes
 
@@ -78,7 +79,8 @@ func CreateApiServer() *gin.Engine {
 
 	// For both protected and unprotected routes
 	router.GET("/ping", ping.Get)
-	router.GET("/health", ping.Get)
+	router.GET("/ready", ping.Ready)
+	router.GET("/health", ping.Health)
 	router.GET("/version", version.Get)
 
 	// Api keys
@@ -91,15 +93,12 @@ func CreateApiServer() *gin.Engine {
 func SetupApiServer(router *gin.Engine) {
 	// Set gin mode
 	gin.SetMode(basicRes.GetConfig("MODE"))
+	// Required for `/projects/hello%20%2F%20world` to be parsed properly with `/projects/:projectName`
+	// end up with `name = "hello / world"`
+	router.UseRawPath = true
 
 	// Endpoint to proceed database migration
 	router.GET("/proceed-db-migration", func(ctx *gin.Context) {
-		// Check if migration requires confirmation
-		if !services.MigrationRequireConfirmation() {
-			// Return success response
-			shared.ApiOutputSuccess(ctx, nil, http.StatusOK)
-			return
-		}
 		// Execute database migration
 		err := services.ExecuteMigration()
 		if err != nil {
@@ -113,15 +112,22 @@ func SetupApiServer(router *gin.Engine) {
 
 	// Restrict access if database migration is required
 	router.Use(func(ctx *gin.Context) {
-		if !services.MigrationRequireConfirmation() {
-			return
+		serviceStatus := services.CurrentStatus()
+		if serviceStatus == services.SERVICE_STATUS_WAIT_CONFIRM {
+			// Return error response
+			shared.ApiOutputError(
+				ctx,
+				errors.HttpStatus(http.StatusPreconditionRequired).New(DB_MIGRATION_REQUIRED),
+			)
+			ctx.Abort()
+		} else if serviceStatus == services.SERVICE_STATUS_MIGRATING {
+			// Return error response
+			shared.ApiOutputError(
+				ctx,
+				errors.HttpStatus(http.StatusPreconditionRequired).New(DB_MIGRATING),
+			)
+			ctx.Abort()
 		}
-		// Return error response
-		shared.ApiOutputError(
-			ctx,
-			errors.HttpStatus(http.StatusPreconditionRequired).New(DB_MIGRATION_REQUIRED),
-		)
-		ctx.Abort()
 	})
 
 	// Add swagger handlers

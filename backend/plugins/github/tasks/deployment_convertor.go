@@ -39,7 +39,7 @@ const (
 )
 
 var ConvertDeploymentsMeta = plugin.SubTaskMeta{
-	Name:             "ConvertDeployments",
+	Name:             "Convert Deployments",
 	EntryPoint:       ConvertDeployment,
 	EnabledByDefault: true,
 	Description:      "Convert tool layer table github_deployments into domain layer table deployment",
@@ -95,10 +95,12 @@ func ConvertDeployment(taskCtx plugin.SubTaskContext) errors.Error {
 					StartedDate:  &githubDeployment.CreatedDate,
 					FinishedDate: &githubDeployment.UpdatedDate,
 				},
-				CommitSha: githubDeployment.CommitOid,
-				RefName:   githubDeployment.RefName,
-				RepoId:    deploymentScopeIdGen.Generate(githubDeployment.ConnectionId, githubDeployment.GithubId),
-				RepoUrl:   githubDeployment.RepositoryUrl,
+				CommitSha:    githubDeployment.CommitOid,
+				RefName:      githubDeployment.RefName,
+				RepoId:       deploymentScopeIdGen.Generate(githubDeployment.ConnectionId, githubDeployment.GithubId),
+				RepoUrl:      githubDeployment.RepositoryUrl,
+				DisplayTitle: githubDeployment.DisplayTitle,
+				Url:          githubDeployment.Url,
 			}
 
 			durationSec := float64(githubDeployment.UpdatedDate.Sub(githubDeployment.CreatedDate).Milliseconds() / 1e3)
