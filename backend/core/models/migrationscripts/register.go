@@ -112,5 +112,10 @@ func All() []plugin.MigrationScript {
 		new(addStore),
 		new(addSubtaskField),
 		new(addDisplayTitleAndUrl),
+		new(addSubtaskStates),
+		new(addCicdRelease),
+		new(addCommitShaToCicdRelease),
+		new(updateIssueKeyType),
+		new(updatePluginOptionInProjectMetricSetting),
 	}
 }
