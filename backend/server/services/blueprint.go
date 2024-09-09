@@ -367,7 +367,7 @@ func MakePlanForBlueprint(blueprint *models.Blueprint, syncPolicy *models.SyncPo
 	if err != nil {
 		return nil, err
 	}
-	return SequencializePipelinePlans(blueprint.BeforePlan, plan, blueprint.AfterPlan), nil
+	return SequentializePipelinePlans(blueprint.BeforePlan, plan, blueprint.AfterPlan), nil
 }
 
 // ParallelizePipelinePlans merges multiple pipelines into one unified plan
@@ -388,9 +388,9 @@ func ParallelizePipelinePlans(plans ...models.PipelinePlan) models.PipelinePlan 
 	return merged
 }
 
-// SequencializePipelinePlans merges multiple pipelines into one unified plan
-// by assuming they must be executed in sequencial order
-func SequencializePipelinePlans(plans ...models.PipelinePlan) models.PipelinePlan {
+// SequentializePipelinePlans merges multiple pipelines into one unified plan
+// by assuming they must be executed in sequential order
+func SequentializePipelinePlans(plans ...models.PipelinePlan) models.PipelinePlan {
 	merged := make(models.PipelinePlan, 0)
 	// iterate all pipelineTasks and try to merge them into `merged`
 	for _, plan := range plans {
@@ -400,7 +400,7 @@ func SequencializePipelinePlans(plans ...models.PipelinePlan) models.PipelinePla
 }
 
 // TriggerBlueprint triggers blueprint immediately
-func TriggerBlueprint(id uint64, syncPolicy *models.SyncPolicy, shouldSanitize bool) (*models.Pipeline, errors.Error) {
+func TriggerBlueprint(id uint64, triggerSyncPolicy *models.TriggerSyncPolicy, shouldSanitize bool) (*models.Pipeline, errors.Error) {
 	// load record from db
 	blueprint, err := GetBlueprint(id, false)
 	if err != nil {
@@ -410,9 +410,13 @@ func TriggerBlueprint(id uint64, syncPolicy *models.SyncPolicy, shouldSanitize b
 	if !blueprint.Enable {
 		return nil, errors.BadInput.New("blueprint is not enabled")
 	}
-	blueprint.SkipCollectors = syncPolicy.SkipCollectors
-	blueprint.FullSync = syncPolicy.FullSync
-	pipeline, err := createPipelineByBlueprint(blueprint, syncPolicy)
+	blueprint.SkipCollectors = triggerSyncPolicy.SkipCollectors
+	blueprint.FullSync = triggerSyncPolicy.FullSync
+	pipeline, err := createPipelineByBlueprint(blueprint, &models.SyncPolicy{
+		SkipOnFail:        false,
+		TimeAfter:         nil,
+		TriggerSyncPolicy: *triggerSyncPolicy,
+	})
 	if err != nil {
 		return nil, err
 	}

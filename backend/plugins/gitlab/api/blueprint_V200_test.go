@@ -36,7 +36,7 @@ func mockGitlabPlugin(t *testing.T) {
 	mockMeta := mockplugin.NewPluginMeta(t)
 	mockMeta.On("RootPkgPath").Return("github.com/apache/incubator-devlake/plugins/gitlab")
 	mockMeta.On("Name").Return("dummy").Maybe()
-	err := plugin.RegisterPlugin("gitlab", mockMeta)
+	err := plugin.RegisterPlugin(pluginName, mockMeta)
 	assert.Equal(t, err, nil)
 }
 
@@ -86,6 +86,18 @@ func TestMakeDataSourcePipelinePlanV200(t *testing.T) {
 	const pathWithNamespace string = "nddtf/gitlab-test"
 	const expectDomainScopeId = "gitlab:GitlabProject:1:37"
 
+	scopeConfig := &models.GitlabScopeConfig{
+		ScopeConfig: common.ScopeConfig{
+			Entities: []string{plugin.DOMAIN_TYPE_CODE, plugin.DOMAIN_TYPE_TICKET, plugin.DOMAIN_TYPE_CICD},
+		},
+		PrType: "hey,man,wasup",
+		Refdiff: map[string]interface{}{
+			"tagsPattern": "pattern",
+			"tagsLimit":   10,
+			"tagsOrder":   "reverse semver",
+		},
+	}
+
 	actualPlans, err := makePipelinePlanV200(
 		[]plugin.SubTaskMeta{
 			tasks.ConvertProjectMeta,
@@ -119,17 +131,7 @@ func TestMakeDataSourcePipelinePlanV200(t *testing.T) {
 					PathWithNamespace: pathWithNamespace,
 					HttpUrlToRepo:     httpUrlToRepo,
 				},
-				ScopeConfig: &models.GitlabScopeConfig{
-					ScopeConfig: common.ScopeConfig{
-						Entities: []string{plugin.DOMAIN_TYPE_CODE, plugin.DOMAIN_TYPE_TICKET, plugin.DOMAIN_TYPE_CICD},
-					},
-					PrType: "hey,man,wasup",
-					Refdiff: map[string]interface{}{
-						"tagsPattern": "pattern",
-						"tagsLimit":   10,
-						"tagsOrder":   "reverse semver",
-					},
-				},
+				ScopeConfig: scopeConfig,
 			},
 		},
 	)
@@ -138,7 +140,7 @@ func TestMakeDataSourcePipelinePlanV200(t *testing.T) {
 	var expectPlans = coreModels.PipelinePlan{
 		{
 			{
-				Plugin: "gitlab",
+				Plugin: pluginName,
 				Subtasks: []string{
 					tasks.ConvertProjectMeta.Name,
 					tasks.CollectApiIssuesMeta.Name,
@@ -180,4 +182,66 @@ func TestMakeDataSourcePipelinePlanV200(t *testing.T) {
 	}
 
 	assert.Equal(t, expectPlans, actualPlans)
+}
+
+func Test_makePipelinePlanV200_with_empty_scope_config(t *testing.T) {
+
+	mockGitlabPlugin(t)
+
+	type args struct {
+		subtaskMetas []plugin.SubTaskMeta
+		connection   *models.GitlabConnection
+		scopeDetails []*srvhelper.ScopeDetail[models.GitlabProject, models.GitlabScopeConfig]
+	}
+
+	tests := []struct {
+		name                      string
+		args                      args
+		makeSureGitExtractorExist bool
+		wantError                 bool
+	}{
+		{
+			name: "without-empty-scope-config",
+			args: args{
+				subtaskMetas: []plugin.SubTaskMeta{},
+				scopeDetails: []*srvhelper.ScopeDetail[models.GitlabProject, models.GitlabScopeConfig]{
+					&srvhelper.ScopeDetail[models.GitlabProject, models.GitlabScopeConfig]{
+						Scope:       models.GitlabProject{},
+						ScopeConfig: &models.GitlabScopeConfig{},
+					},
+				},
+				connection: &models.GitlabConnection{
+					BaseConnection: api.BaseConnection{
+						Model: common.Model{
+							ID: 1,
+						},
+					},
+					GitlabConn: models.GitlabConn{},
+				},
+			},
+			makeSureGitExtractorExist: true,
+			wantError:                 false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := makePipelinePlanV200(tt.args.subtaskMetas, tt.args.connection, tt.args.scopeDetails)
+			if tt.wantError {
+				assert.Equalf(t, nil, got1, "makePipelinePlanV200 want error(%v, %v, %v)", tt.args.subtaskMetas, tt.args.scopeDetails, tt.args.connection)
+			}
+			if tt.makeSureGitExtractorExist {
+				var existGitExtractor bool
+				for _, g := range got {
+					for _, v := range g {
+						if v.Plugin == "gitextractor" {
+							existGitExtractor = true
+						}
+					}
+				}
+				if !existGitExtractor {
+					t.Fatal("gitextractor not found")
+				}
+			}
+		})
+	}
 }

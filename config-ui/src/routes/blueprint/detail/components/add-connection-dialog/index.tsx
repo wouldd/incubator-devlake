@@ -22,8 +22,9 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Modal, Select, Space, Button } from 'antd';
 import styled from 'styled-components';
 
+import { PATHS } from '@/config';
 import { Block } from '@/components';
-import { selectAllConnections } from '@/features';
+import { selectAllConnections } from '@/features/connections';
 import { useAppSelector } from '@/hooks';
 import { PluginName, DataScopeSelect } from '@/plugins';
 import { IConnection } from '@/types';
@@ -123,7 +124,7 @@ export const AddConnectionDialog = ({ disabled = [], onCancel, onSubmit }: Props
               }}
               onChange={(value) => {
                 if (!value) {
-                  navigate('/connections');
+                  navigate(PATHS.CONNECTIONS());
                 }
                 setSelectedValue(value);
               }}

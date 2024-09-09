@@ -134,7 +134,7 @@ EXPOSE 8080
 
 RUN useradd -ms /bin/bash -d /app devlake -u 1010
 RUN chown -R devlake:devlake /etc/ssl/certs
-USER devlake
+USER 1010
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
@@ -145,7 +145,8 @@ VOLUME /app/logs
 # Setup Python
 COPY python/ /app/python/
 RUN python3 -m pip install --no-cache --upgrade pip setuptools && \
-    python3 -m pip install --no-cache -r python/requirements.txt
+    python3 -m pip install --no-cache -r python/requirements.txt && \
+    pip install --upgrade pip
 
 # Setup Python Poetry package manager
 RUN curl -sSL https://install.python-poetry.org | python3 -

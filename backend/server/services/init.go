@@ -70,7 +70,7 @@ func InitResources() {
 	if err != nil {
 		panic(err)
 	}
-	logger.Info("migration initialized")
+	logger.Info("migrator has been initialized")
 	migrator.Register(migrationscripts.All(), "Framework")
 }
 
@@ -84,25 +84,19 @@ func GetMigrator() plugin.Migrator {
 	return migrator
 }
 
-// Init the services module
-// Should not be called concurrently
-func Init() {
-	InitResources()
-
-	// lock the database to avoid multiple devlake instances from sharing the same one
-	lockDatabase()
-
-	// now, load the plugins
-	errors.Must(runner.LoadPlugins(basicRes))
-
+func registerPluginsMigrationScripts() {
 	// pull migration scripts from plugins to migrator
 	for _, pluginInst := range plugin.AllPlugins() {
 		if migratable, ok := pluginInst.(plugin.PluginMigration); ok {
+			logger.Info("register plugin:%s's migrations scripts", pluginInst.Name())
 			migrator.Register(migratable.MigrationScripts(), pluginInst.Name())
 		}
 	}
+}
 
+func InitExecuteMigration() {
 	// check if there are pending migration
+	logger.Info("has pending scripts? %v, FORCE_MIGRATION: %s", migrator.HasPendingScripts(), cfg.GetBool("FORCE_MIGRATION"))
 	if migrator.HasPendingScripts() {
 		if cfg.GetBool("FORCE_MIGRATION") {
 			errors.Must(ExecuteMigration())
@@ -117,17 +111,40 @@ func Init() {
 	}
 }
 
+// Init the services module
+// Should not be called concurrently
+func Init() {
+	InitResources()
+
+	// lock the database to avoid multiple devlake instances from sharing the same one
+	lockDatabase()
+
+	// now, load the plugins
+	errors.Must(runner.LoadPlugins(basicRes))
+	logger.Info("all plugins have been loaded")
+	registerPluginsMigrationScripts()
+}
+
+func InjectCustomService(pipelineNotifier PipelineNotificationService) errors.Error {
+	if pipelineNotifier == nil {
+		return errors.Default.New("pipeline notifier is nil")
+	}
+	customPipelineNotificationService = pipelineNotifier
+	return nil
+}
+
 var statusLock sync.Mutex
 
 // ExecuteMigration executes all pending migration scripts and initialize services module
 // This might be called concurrently across multiple API requests
 func ExecuteMigration() errors.Error {
 	statusLock.Lock()
-	defer statusLock.Unlock()
 	if serviceStatus == SERVICE_STATUS_MIGRATING {
-		return errors.BadInput.New("already migrating")
+		statusLock.Unlock()
+		return errors.BadInput.New("There is a migration in progress.")
 	}
 	if serviceStatus == SERVICE_STATUS_READY {
+		statusLock.Unlock()
 		return nil
 	}
 	serviceStatus = SERVICE_STATUS_MIGRATING
@@ -135,6 +152,7 @@ func ExecuteMigration() errors.Error {
 	// apply all pending migration scripts
 	err := migrator.Execute()
 	if err != nil {
+		logger.Error(err, "failed to execute migration")
 		return err
 	}
 
@@ -146,6 +164,7 @@ func ExecuteMigration() errors.Error {
 	pipelineServiceInit()
 	statusLock.Lock()
 	serviceStatus = SERVICE_STATUS_READY
+	statusLock.Unlock()
 	return nil
 }
 

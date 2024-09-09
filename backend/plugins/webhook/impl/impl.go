@@ -63,6 +63,7 @@ func (p Webhook) GetTablesInfo() []dal.Tabler {
 func (p Webhook) MakeDataSourcePipelinePlanV200(
 	connectionId uint64,
 	_ []*coreModels.BlueprintScope,
+	skipCollectors bool,
 ) (pp coreModels.PipelinePlan, sc []plugin.Scope, err errors.Error) {
 	return api.MakeDataSourcePipelinePlanV200(connectionId)
 }
@@ -88,7 +89,7 @@ func (p Webhook) ApiResources() map[string]map[string]plugin.ApiResourceHandler 
 			"DELETE": api.DeleteConnection,
 		},
 		"connections/:connectionId/deployments": {
-			"POST": api.PostDeploymentCicdTask,
+			"POST": api.PostDeployments,
 		},
 		"connections/:connectionId/issues": {
 			"POST": api.PostIssue,
@@ -97,7 +98,7 @@ func (p Webhook) ApiResources() map[string]map[string]plugin.ApiResourceHandler 
 			"POST": api.CloseIssue,
 		},
 		":connectionId/deployments": {
-			"POST": api.PostDeploymentCicdTask,
+			"POST": api.PostDeployments,
 		},
 		":connectionId/issues": {
 			"POST": api.PostIssue,

@@ -17,14 +17,15 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useLoaderData, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Layout as AntdLayout, Menu, Divider } from 'antd';
 
-import { PageLoading, Logo, ExternalLink } from '@/components';
-import { init, selectError, selectStatus } from '@/features';
+import { Logo, ExternalLink } from '@/components';
+import { selectOnboard } from '@/features/onboard';
+import { selectVersion } from '@/features/version';
 import { OnboardCard } from '@/routes/onboard/components';
-import { useAppDispatch, useAppSelector } from '@/hooks';
+import { useAppSelector } from '@/hooks';
 
 import { menuItems, menuItemsMatch, headerItems } from './config';
 
@@ -36,18 +37,11 @@ export const Layout = () => {
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
-  const { version, plugins } = useLoaderData() as { version: string; plugins: string[] };
-
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  const dispatch = useAppDispatch();
-  const status = useAppSelector(selectStatus);
-  const error = useAppSelector(selectError);
-
-  useEffect(() => {
-    dispatch(init(plugins));
-  }, []);
+  const { initial } = useAppSelector(selectOnboard);
+  const version = useAppSelector(selectVersion);
 
   useEffect(() => {
     const curMenuItem = menuItemsMatch[pathname];
@@ -75,16 +69,12 @@ export const Layout = () => {
     return curMenuItem?.label ?? '';
   }, [pathname]);
 
-  if (['idle', 'loading'].includes(status)) {
-    return <PageLoading />;
-  }
-
-  if (status === 'failed') {
-    throw error.message;
+  if (!initial) {
+    return <Navigate to="/onboard" />;
   }
 
   return (
-    <AntdLayout style={{ height: '100vh' }}>
+    <AntdLayout style={{ height: '100%', overflow: 'hidden' }}>
       <Helmet>
         <title>
           {title ? `${title} - ` : ''}
@@ -125,7 +115,7 @@ export const Layout = () => {
         >
           {headerItems
             .filter((item) =>
-              import.meta.env.DEVLAKE_COPYRIGHT_HIDE ? !['GitHub', 'Slack'].includes(item.label) : true,
+              import.meta.env.DEVLAKE_COPYRIGHT_HIDE ? !['Dashboards', 'GitHub', 'Slack'].includes(item.label) : true,
             )
             .map((item, i, arr) => (
               <ExternalLink key={item.label} link={item.link} style={{ display: 'flex', alignItems: 'center' }}>

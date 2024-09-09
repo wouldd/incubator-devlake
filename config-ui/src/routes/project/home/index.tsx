@@ -19,20 +19,17 @@
 import { useState, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
-import { Flex, Table, Button, Modal, Input, Checkbox, message } from 'antd';
+import { Flex, Table, Button, Modal, Input } from 'antd';
 
 import API from '@/api';
-import { PageHeader, Block, ExternalLink, IconButton } from '@/components';
+import { PageHeader, Block, IconButton } from '@/components';
 import { getCron, PATHS } from '@/config';
-import { ConnectionName } from '@/features';
+import { ConnectionName } from '@/features/connections';
 import { useRefreshData } from '@/hooks';
 import { OnboardTour } from '@/routes/onboard/components';
-import { DOC_URL } from '@/release';
 import { formatTime, operator } from '@/utils';
 import { PipelineStatus } from '@/routes/pipeline';
 import { IBlueprint } from '@/types';
-
-import { validName } from '../utils';
 
 export const ProjectHomePage = () => {
   const [version, setVersion] = useState(1);
@@ -40,7 +37,6 @@ export const ProjectHomePage = () => {
   const [pageSize] = useState(20);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [enableDora, setEnableDora] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const nameRef = useRef(null);
@@ -73,15 +69,9 @@ export const ProjectHomePage = () => {
   const handleHideDialog = () => {
     setOpen(false);
     setName('');
-    setEnableDora(true);
   };
 
   const handleCreate = async () => {
-    if (!validName(name)) {
-      message.error('Please enter alphanumeric or underscore');
-      return;
-    }
-
     const [success] = await operator(
       async () =>
         API.project.create({
@@ -90,8 +80,13 @@ export const ProjectHomePage = () => {
           metrics: [
             {
               pluginName: 'dora',
-              pluginOption: '',
-              enable: enableDora,
+              pluginOption: {},
+              enable: true,
+            },
+            {
+              pluginName: 'issue_trace',
+              pluginOption: {},
+              enable: true,
             },
           ],
         }),
@@ -123,7 +118,12 @@ export const ProjectHomePage = () => {
             dataIndex: 'name',
             key: 'name',
             render: (name: string) => (
-              <Link to={PATHS.PROJECT(name, { tab: 'configuration' })} style={{ color: '#292b3f' }} ref={nameRef}>
+              <Link
+                to={PATHS.PROJECT(name)}
+                state={{ activeKey: 'configuration' }}
+                style={{ color: '#292b3f' }}
+                ref={nameRef}
+              >
                 {name}
               </Link>
             ),
@@ -183,7 +183,11 @@ export const ProjectHomePage = () => {
                 type="primary"
                 icon={<SettingOutlined />}
                 helptip="Project Configuration"
-                onClick={() => navigate(PATHS.PROJECT(name, { tab: 'configuration' }))}
+                onClick={() =>
+                  navigate(PATHS.PROJECT(name), {
+                    state: { activeKey: 'configuration' },
+                  })
+                }
               />
             ),
           },
@@ -220,21 +224,6 @@ export const ProjectHomePage = () => {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-        </Block>
-        <Block
-          title="Project Settings"
-          description={
-            <>
-              <ExternalLink link={DOC_URL.DORA}>DORA metrics</ExternalLink>
-              <span style={{ marginLeft: 4 }}>
-                are four widely-adopted metrics for measuring software delivery performance.
-              </span>
-            </>
-          }
-        >
-          <Checkbox checked={enableDora} onChange={(e) => setEnableDora(e.target.checked)}>
-            Enable DORA Metrics
-          </Checkbox>
         </Block>
       </Modal>
       {ready && dataSource.length === 1 && (

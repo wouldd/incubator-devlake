@@ -20,8 +20,8 @@ package api
 import (
 	"github.com/apache/incubator-devlake/core/errors"
 	coreModels "github.com/apache/incubator-devlake/core/models"
-	"github.com/apache/incubator-devlake/core/models/domainlayer/devops"
 	"github.com/apache/incubator-devlake/core/models/domainlayer/didgen"
+	"github.com/apache/incubator-devlake/core/models/domainlayer/ticket"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/core/utils"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
@@ -34,6 +34,7 @@ func MakeDataSourcePipelinePlanV200(
 	subtaskMetas []plugin.SubTaskMeta,
 	connectionId uint64,
 	bpScopes []*coreModels.BlueprintScope,
+	skipCollectors bool,
 ) (coreModels.PipelinePlan, []plugin.Scope, errors.Error) {
 	connection, err := dsHelper.ConnSrv.FindByPk(connectionId)
 	if err != nil {
@@ -96,7 +97,7 @@ func makeScopesV200(
 		id := idgen.Generate(connection.ID, scope.Id)
 
 		if utils.StringsContains(scopeConfig.Entities, plugin.DOMAIN_TYPE_TICKET) {
-			scopes = append(scopes, devops.NewCicdScope(id, scope.Name))
+			scopes = append(scopes, ticket.NewBoard(id, scope.Name))
 		}
 	}
 
