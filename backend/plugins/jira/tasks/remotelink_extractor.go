@@ -76,6 +76,7 @@ func ExtractRemotelinks(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_REMOTELINK_TABLE,
+			PrimaryKeyExtractor:REMOTELINK_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			var result []interface{}

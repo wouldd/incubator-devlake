@@ -71,6 +71,7 @@ func ConvertWorklogs(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_WORKLOGS_TABLE,
+			PrimaryKeyExtractor:WORKLOG_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(models.JiraWorklog{}),
 		Input:        cursor,

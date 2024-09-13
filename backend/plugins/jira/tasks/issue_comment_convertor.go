@@ -73,6 +73,7 @@ func ConvertIssueComments(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_ISSUE_COMMENT_TABLE,
+			PrimaryKeyExtractor:ISSUE_COMMENT_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(models.JiraIssueComment{}),
 		Input:        cursor,

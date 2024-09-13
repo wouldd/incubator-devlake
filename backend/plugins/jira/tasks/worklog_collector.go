@@ -30,7 +30,7 @@ import (
 )
 
 const RAW_WORKLOGS_TABLE = "jira_api_worklogs"
-
+const WORKLOG_PRIMARY_KEY_PATH = "id"
 var CollectWorklogsMeta = plugin.SubTaskMeta{
 	Name:             "collectWorklogs",
 	EntryPoint:       CollectWorklogs,
@@ -52,6 +52,7 @@ func CollectWorklogs(taskCtx plugin.SubTaskContext) errors.Error {
 			BoardId:      data.Options.BoardId,
 		},
 		Table: RAW_WORKLOGS_TABLE,
+		PrimaryKeyExtractor:WORKLOG_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

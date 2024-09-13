@@ -33,6 +33,7 @@ func init() {
 }
 
 const RawBuildTable = "azuredevops_go_api_builds"
+const BUILDS_PRIMARY_KEY_PATH = "id"
 
 var CollectBuildsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiBuilds",
@@ -44,7 +45,7 @@ var CollectBuildsMeta = plugin.SubTaskMeta{
 }
 
 func CollectBuilds(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawBuildTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawBuildTable,BUILDS_PRIMARY_KEY_PATH)
 	repoId := data.Options.RepositoryId
 	collector, err := api.NewStatefulApiCollectorForFinalizableEntity(api.FinalizableApiCollectorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

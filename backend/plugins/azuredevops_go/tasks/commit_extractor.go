@@ -66,7 +66,7 @@ type CommitApiResponse struct {
 }
 
 func ExtractApiCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable,COMMIT_PRIMARY_KEY_PATH)
 
 	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

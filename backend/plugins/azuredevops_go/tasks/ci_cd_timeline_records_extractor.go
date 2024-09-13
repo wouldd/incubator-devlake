@@ -42,7 +42,7 @@ var ExtractApiBuildRecordsMeta = plugin.SubTaskMeta{
 }
 
 func ExtractApiTimelineTasks(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawTimelineRecordTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawTimelineRecordTable,TIMELINERECORD_PRIMARY_KEY_PATH)
 
 	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

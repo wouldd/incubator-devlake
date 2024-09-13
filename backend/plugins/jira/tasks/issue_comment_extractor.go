@@ -50,6 +50,7 @@ func ExtractIssueComments(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_ISSUE_COMMENT_TABLE,
+			PrimaryKeyExtractor:ISSUE_COMMENT_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			// process input

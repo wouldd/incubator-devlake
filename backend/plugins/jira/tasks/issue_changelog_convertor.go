@@ -100,6 +100,7 @@ func ConvertIssueChangelogs(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_CHANGELOG_TABLE,
+			PrimaryKeyExtractor:CHANGELOG_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(IssueChangelogItemResult{}),
 		Input:        cursor,

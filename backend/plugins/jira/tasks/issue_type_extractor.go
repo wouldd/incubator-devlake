@@ -47,6 +47,7 @@ func ExtractIssueType(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_ISSUE_TYPE_TABLE,
+			PrimaryKeyExtractor:ISSUE_TYPE_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			issueType := &models.JiraIssueType{}

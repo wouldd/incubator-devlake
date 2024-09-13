@@ -28,7 +28,7 @@ import (
 )
 
 const RAW_ISSUE_TYPE_TABLE = "jira_api_issue_types"
-
+const ISSUE_TYPE_PRIMARY_KEY_PATH = "id"
 var _ plugin.SubTaskEntryPoint = CollectIssueTypes
 
 var CollectIssueTypesMeta = plugin.SubTaskMeta{
@@ -56,6 +56,7 @@ func CollectIssueTypes(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_ISSUE_TYPE_TABLE,
+			PrimaryKeyExtractor:ISSUE_TYPE_PRIMARY_KEY_PATH,
 		},
 		ApiClient:   data.ApiClient,
 		Concurrency: 1,

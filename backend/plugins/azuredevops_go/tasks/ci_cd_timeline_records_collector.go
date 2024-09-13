@@ -32,6 +32,7 @@ func init() {
 }
 
 const RawTimelineRecordTable = "azuredevops_go_api_timeline_records"
+const TIMELINERECORD_PRIMARY_KEY_PATH = "timelineId"
 
 var CollectJobsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiTimelineRecords",
@@ -44,7 +45,7 @@ var CollectJobsMeta = plugin.SubTaskMeta{
 }
 
 func CollectRecords(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawTimelineRecordTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawTimelineRecordTable,TIMELINERECORD_PRIMARY_KEY_PATH)
 
 	db := taskCtx.GetDal()
 	cursor, err := db.Cursor(

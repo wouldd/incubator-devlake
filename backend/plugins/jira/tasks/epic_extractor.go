@@ -52,9 +52,10 @@ func ExtractEpics(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_EPIC_TABLE,
+			PrimaryKeyExtractor: EPIC_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
-			return extractIssues(data, mappings, row)
+			return extractIssues(data, mappings, row, taskCtx)
 		},
 	})
 	if err != nil {

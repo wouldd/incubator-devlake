@@ -30,7 +30,7 @@ import (
 )
 
 const RAW_BOARD_TABLE = "jira_api_boards"
-
+const BOARD_PRIMARY_KEY_PATH = "id"
 var ConvertBoardMeta = plugin.SubTaskMeta{
 	Name:             "convertBoard",
 	EntryPoint:       ConvertBoard,
@@ -63,6 +63,7 @@ func ConvertBoard(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_BOARD_TABLE,
+			PrimaryKeyExtractor:BOARD_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(models.JiraBoard{}),
 		Input:        cursor,

@@ -32,7 +32,7 @@ func init() {
 }
 
 const RawPullRequestTable = "azuredevops_go_api_pull_requests"
-
+const PR_PRIMARY_KEY_PATH = "pullRequestId"
 var CollectApiPullRequestsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiPullRequests",
 	EntryPoint:       CollectApiPullRequests,
@@ -44,20 +44,13 @@ var CollectApiPullRequestsMeta = plugin.SubTaskMeta{
 }
 
 func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
-	data := taskCtx.GetData().(*AzuredevopsTaskData)
-
-	rawDataSubTaskArgs := &api.RawDataSubTaskArgs{
-		Ctx:     taskCtx,
-		Table:   RawPullRequestTable,
-		Options: data.Options,
-	}
-
-	collectorWithState, err := api.NewStatefulApiCollector(*rawDataSubTaskArgs)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable,PR_PRIMARY_KEY_PATH)
+	apiCollector, err := api.NewStatefulApiCollector(*rawDataSubTaskArgs)
 	if err != nil {
 		return err
 	}
 
-	err = collectorWithState.InitCollector(api.ApiCollectorArgs{
+	err = apiCollector.InitCollector(api.ApiCollectorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,
 		ApiClient:          data.ApiClient,
 		PageSize:           100,
@@ -68,9 +61,9 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 			query.Set("$skip", fmt.Sprint(reqData.Pager.Skip))
 			query.Set("$top", fmt.Sprint(reqData.Pager.Size))
 
-			if collectorWithState.Since != nil {
+			if apiCollector.GetSince() != nil {
 				query.Set("searchCriteria.queryTimeRangeType", "created")
-				query.Set("searchCriteria.minTime", collectorWithState.Since.Format(time.RFC3339))
+				query.Set("searchCriteria.minTime", apiCollector.GetSince().Format(time.RFC3339))
 			}
 			return query, nil
 		},
@@ -82,5 +75,5 @@ func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
 		return err
 	}
 
-	return collectorWithState.Execute()
+	return apiCollector.Execute()
 }

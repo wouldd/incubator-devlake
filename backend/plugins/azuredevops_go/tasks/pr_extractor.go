@@ -44,7 +44,7 @@ var ExtractApiPullRequestsMeta = plugin.SubTaskMeta{
 }
 
 func ExtractApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable,PR_PRIMARY_KEY_PATH)
 
 	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

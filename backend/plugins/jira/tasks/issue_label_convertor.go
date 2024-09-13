@@ -63,6 +63,7 @@ func ConvertIssueLabels(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_ISSUE_TABLE,
+			PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(models.JiraIssueLabel{}),
 		Input:        cursor,

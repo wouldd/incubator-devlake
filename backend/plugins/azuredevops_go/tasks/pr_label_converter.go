@@ -45,7 +45,7 @@ var ConvertPrLabelsMeta = plugin.SubTaskMeta{
 
 func ConvertPrLabels(taskCtx plugin.SubTaskContext) errors.Error {
 	db := taskCtx.GetDal()
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable,PR_PRIMARY_KEY_PATH)
 	repoId := data.Options.RepositoryId
 	clauses := []dal.Clause{
 		dal.Select("*"),

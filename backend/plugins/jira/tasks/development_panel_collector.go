@@ -33,6 +33,7 @@ import (
 )
 
 const RAW_DEVELOPMENT_PANEL = "jira_api_development_panels"
+const DEV_PANEL_PRIMARY_KEY_PATH = "id"
 
 var _ plugin.SubTaskEntryPoint = CollectDevelopmentPanel
 
@@ -61,6 +62,7 @@ func CollectDevelopmentPanel(taskCtx plugin.SubTaskContext) errors.Error {
 		},
 
 		Table: RAW_DEVELOPMENT_PANEL,
+		PrimaryKeyExtractor:DEV_PANEL_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

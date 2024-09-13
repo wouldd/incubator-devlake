@@ -54,7 +54,7 @@ var ConvertRepoMeta = plugin.SubTaskMeta{
 }
 
 func ConvertRepo(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, models.AzuredevopsRepo{}.TableName())
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, models.AzuredevopsRepo{}.TableName(),"repositoryId")
 	db := taskCtx.GetDal()
 	clauses := []dal.Clause{
 		dal.From(&models.AzuredevopsRepo{}),

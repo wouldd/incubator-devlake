@@ -64,6 +64,7 @@ func ConvertAccounts(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_USERS_TABLE,
+			PrimaryKeyExtractor:USERS_PRIMARY_KEY_PATH,
 		},
 		InputRowType: reflect.TypeOf(models.JiraAccount{}),
 		Input:        cursor,

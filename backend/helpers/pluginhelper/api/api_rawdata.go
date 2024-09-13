@@ -47,7 +47,7 @@ type RawDataSubTaskArgs struct {
 
 	//	Table store raw data
 	Table string `comment:"Raw data table name"`
-
+    PrimaryKeyExtractor string `comment:"Identifies path to primary key in raw data json"`
 	// Deprecated: Use Options instead
 	// This struct will be JSONEncoded and stored into database along with raw data itself, to identity minimal set of
 	// data to be processed, for example, we process JiraIssues by Board

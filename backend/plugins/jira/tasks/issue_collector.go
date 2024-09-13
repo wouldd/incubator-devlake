@@ -34,6 +34,7 @@ import (
 )
 
 const RAW_ISSUE_TABLE = "jira_api_issues"
+const ISSUE_PRIMARY_KEY_PATH = "id"
 
 var _ plugin.SubTaskEntryPoint = CollectIssues
 
@@ -62,6 +63,7 @@ func CollectIssues(taskCtx plugin.SubTaskContext) errors.Error {
 			Table store raw data
 		*/
 		Table: RAW_ISSUE_TABLE,
+		PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err
@@ -76,7 +78,7 @@ func CollectIssues(taskCtx plugin.SubTaskContext) errors.Error {
 	} else {
 		logger.Info("got user's timezone: %v", loc.String())
 	}
-	jql := "ORDER BY created ASC"
+	jql := "ORDER BY created DESC"
 	if apiCollector.GetSince() != nil {
 		jql = buildJQL(*apiCollector.GetSince(), loc)
 	}
@@ -148,7 +150,7 @@ func CollectIssues(taskCtx plugin.SubTaskContext) errors.Error {
 
 // buildJQL build jql based on timeAfter and incremental mode
 func buildJQL(since time.Time, location *time.Location) string {
-	jql := "ORDER BY created ASC"
+	jql := "ORDER BY created DESC"
 	if !since.IsZero() {
 		if location != nil {
 			since = since.In(location)

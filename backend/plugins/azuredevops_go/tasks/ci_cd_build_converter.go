@@ -46,7 +46,7 @@ var ConvertBuildsMeta = plugin.SubTaskMeta{
 
 func ConvertBuilds(taskCtx plugin.SubTaskContext) errors.Error {
 	db := taskCtx.GetDal()
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable,BUILDS_PRIMARY_KEY_PATH)
 	clauses := []dal.Clause{
 		dal.Select("*"),
 		dal.From(&models.AzuredevopsBuild{}),

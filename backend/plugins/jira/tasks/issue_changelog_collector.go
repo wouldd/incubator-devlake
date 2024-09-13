@@ -36,6 +36,7 @@ import (
 var _ plugin.SubTaskEntryPoint = CollectIssueChangelogs
 
 const RAW_CHANGELOG_TABLE = "jira_api_issue_changelogs"
+const CHANGELOG_PRIMARY_KEY_PATH = "id"
 
 var CollectIssueChangelogsMeta = plugin.SubTaskMeta{
 	Name:             "collectIssueChangelogs",
@@ -60,6 +61,7 @@ func CollectIssueChangelogs(taskCtx plugin.SubTaskContext) errors.Error {
 			BoardId:      data.Options.BoardId,
 		},
 		Table: RAW_CHANGELOG_TABLE,
+		PrimaryKeyExtractor:CHANGELOG_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

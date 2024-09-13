@@ -44,7 +44,7 @@ var ConvertApiPrCommitsMeta = plugin.SubTaskMeta{
 }
 
 func ConvertApiPullRequestsCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable,PRCOMMIT_PRIMARY_KEY_PATH)
 	db := taskCtx.GetDal()
 
 	clauses := []dal.Clause{

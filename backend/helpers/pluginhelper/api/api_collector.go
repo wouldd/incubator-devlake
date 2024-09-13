@@ -27,6 +27,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+	"strconv"
+	"hash/fnv"
 
 	"github.com/apache/incubator-devlake/core/plugin"
 
@@ -157,6 +159,7 @@ func (collector *ApiCollector) Execute() errors.Error {
 	db := collector.args.Ctx.GetDal()
 	err := collector.ensureRawTable()
 	if err != nil {
+		logger.Debug("error ensuring raw table")
 		return errors.Default.Wrap(err, "error auto-migrating collector")
 	}
 
@@ -167,10 +170,16 @@ func (collector *ApiCollector) Execute() errors.Error {
 	}
 	// flush data if not incremental collection
 	if !isIncremental {
+		logger.Info("Deleting data before refresh from table %v", collector.table)
+		logger.Info("With parameters %v", collector.params)
+		
 		err = db.Delete(&RawData{}, dal.From(collector.table), dal.Where("params = ?", collector.params))
 		if err != nil {
 			return errors.Default.Wrap(err, "error deleting data from collector")
 		}
+	}else{
+		logger.Info("incramental refresh")
+
 	}
 
 	// if MinTickInterval was specified
@@ -211,6 +220,7 @@ func (collector *ApiCollector) Execute() errors.Error {
 			}
 			var input interface{}
 			input, err = iterator.Fetch()
+			logger.Debug("iterator fetch returned input %v", input)
 			if err != nil {
 				break
 			}
@@ -224,8 +234,9 @@ func (collector *ApiCollector) Execute() errors.Error {
 	if err != nil {
 		return errors.Default.Wrap(err, "error executing collector")
 	}
-	logger.Debug("wait for all async api to be finished")
+	logger.Info("wait for all async api to be finished")
 	err = collector.args.ApiClient.WaitAsync()
+
 	if err != nil {
 		logger.Error(err, "end api collection error")
 		err = errors.Default.Wrap(err, "Error waiting for async Collector execution")
@@ -237,6 +248,7 @@ func (collector *ApiCollector) Execute() errors.Error {
 }
 
 func (collector *ApiCollector) exec(input interface{}) {
+	logger := collector.args.Ctx.GetLogger()
 	inputJson, err := json.Marshal(input)
 	if err != nil {
 		panic(err)
@@ -249,6 +261,8 @@ func (collector *ApiCollector) exec(input interface{}) {
 		Size: collector.args.PageSize,
 	}
 	// fetch the detail
+	logger.Info("Exec collector for %v total pages",collector.args.GetTotalPages)
+
 	if collector.args.PageSize <= 0 {
 		collector.fetchAsync(reqData, nil)
 		// fetch pages sequentially
@@ -265,6 +279,8 @@ func (collector *ApiCollector) exec(input interface{}) {
 
 // fetchPagesSequentially fetches data of all pages in order to build RequestData by prev response
 func (collector *ApiCollector) fetchPagesSequentially(reqData *RequestData) {
+	logger := collector.args.Ctx.GetLogger()
+	logger.Info("fetch pages sequentially")
 	var collect func() errors.Error
 	collect = func() errors.Error {
 		collector.fetchAsync(reqData, func(count int, body []byte, res *http.Response) errors.Error {
@@ -292,6 +308,8 @@ func (collector *ApiCollector) fetchPagesSequentially(reqData *RequestData) {
 
 // fetchPagesDetermined fetches data of all pages for APIs that return paging information
 func (collector *ApiCollector) fetchPagesDetermined(reqData *RequestData) {
+	logger := collector.args.Ctx.GetLogger()
+	logger.Info("fetch pages determined")
 	// fetch first page
 	collector.fetchAsync(reqData, func(count int, body []byte, res *http.Response) errors.Error {
 		totalPages, err := collector.args.GetTotalPages(res, collector.args)
@@ -320,6 +338,8 @@ func (collector *ApiCollector) fetchPagesDetermined(reqData *RequestData) {
 
 // fetchPagesUndetermined fetches data of all pages for APIs that do NOT return paging information
 func (collector *ApiCollector) fetchPagesUndetermined(reqData *RequestData) {
+	logger := collector.args.Ctx.GetLogger()
+	logger.Info("fetch pages undetermined")
 	//logger := collector.args.Ctx.GetLogger()
 	//logger.Debug("fetch all pages in parallel with specified concurrency: %d", collector.args.Concurrency)
 	// if api doesn't return total number of pages, employ a step concurrent technique
@@ -339,6 +359,7 @@ func (collector *ApiCollector) fetchPagesUndetermined(reqData *RequestData) {
 			if concurrency < 10 {
 				concurrency = 10
 			}
+			logger.Debug("calculated concurrency of %v", concurrency)
 		}
 	}
 	for i := 0; i < concurrency; i++ {
@@ -371,6 +392,7 @@ func (collector *ApiCollector) fetchPagesUndetermined(reqData *RequestData) {
 }
 
 func (collector *ApiCollector) generateUrl(pager *Pager, input interface{}) (string, errors.Error) {
+	logger := collector.args.Ctx.GetLogger()
 	params := collector.args.Params
 	if collector.args.Options != nil {
 		params = collector.args.Options.GetParams()
@@ -384,6 +406,7 @@ func (collector *ApiCollector) generateUrl(pager *Pager, input interface{}) (str
 	if err != nil {
 		return "", errors.Convert(err)
 	}
+	logger.Debug("generated a page url of %v", buf.String())
 	return buf.String(), nil
 }
 
@@ -398,6 +421,7 @@ func (collector *ApiCollector) SetAfterResponse(f plugin.ApiClientAfterResponse)
 }
 
 func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int, []byte, *http.Response) errors.Error) {
+	
 	if reqData.Pager == nil {
 		reqData.Pager = &Pager{
 			Page: 1,
@@ -444,6 +468,7 @@ func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int
 		res.Body.Close()
 		res.Body = io.NopCloser(bytes.NewBuffer(body))
 		// convert body to array of RawJSON
+		logger.Debug("fetchAsync response body %v", res.Body)
 		items, err := collector.args.ResponseParser(res)
 		if err != nil {
 			if errors.Is(err, ErrFinishCollect) {
@@ -463,18 +488,33 @@ func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int
 		urlString := res.Request.URL.String()
 		rows := make([]*RawData, count)
 		for i, msg := range items {
+			//find an id field in the message
+			extractedID, err := ExtractField(msg, collector.args.PrimaryKeyExtractor)
+			if err != nil {
+				jsonString := string(msg)
+				logger.Debug("failed to parse id from message %s using extractino path %s", jsonString,collector.args.PrimaryKeyExtractor) 
+				return errors.Default.Wrap(err,fmt.Sprintf("failed to extract ID: %v with error %w", msg, err))
+			}
+			idStr := fmt.Sprintf("%v", extractedID) // Convert the ID to string
+			idUint64, err := strconv.ParseUint(idStr, 10, 64) // Convert the string to uint64
+			if err != nil {
+				logger.Debug("failed to convert id to idUnit64: %w", extractedID)
+				idUint64 := hashID(idStr)
+				logger.Debug("hashed instead to idUnit64: %w", idUint64)
+			}
 			rows[i] = &RawData{
+				ID: idUint64,
 				Params: collector.params,
 				Data:   msg,
 				Url:    urlString,
 				Input:  reqData.InputJSON,
 			}
 		}
-		err = db.Create(rows, dal.From(collector.table))
+		err = db.CreateOrUpdate(rows, dal.From(collector.table))
 		if err != nil {
 			return errors.Default.Wrap(err, fmt.Sprintf("error inserting raw rows into %s", collector.table))
 		}
-		logger.Debug("fetchAsync === total %d rows were saved into database", count)
+		logger.Debug("fetchAsync === total %d rows were saved into table %s", count, collector.table)
 		// increase progress only when it was not nested
 		collector.args.Ctx.IncProgress(1)
 		if handler != nil {
@@ -485,9 +525,35 @@ func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int
 		return nil
 	}
 	if collector.args.Method == http.MethodPost {
+		logger.Debug("fetchAsync doPostAsync")
 		collector.args.ApiClient.DoPostAsync(apiUrl, apiQuery, reqBody, apiHeader, responseHandler)
 	} else {
+		logger.Debug("fetchAsync doGetAsync")
 		collector.args.ApiClient.DoGetAsync(apiUrl, apiQuery, apiHeader, responseHandler)
 	}
 	logger.Debug("fetchAsync === enqueued for %s %v", apiUrl, apiQuery)
+}
+
+
+// Function to extract field from JSON
+func ExtractField(jsonPayload []byte, fieldPath string) (interface{}, error) {
+    var data map[string]interface{}
+    err := json.Unmarshal(jsonPayload, &data)
+    if err != nil {
+
+        return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+    }
+    if value, ok := data[fieldPath]; ok {
+
+        return value, nil
+    }
+
+    return nil, fmt.Errorf("field %s not found in JSON", fieldPath)
+}
+
+// Define the hashID function
+func hashID(id string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(id))
+	return h.Sum64()
 }

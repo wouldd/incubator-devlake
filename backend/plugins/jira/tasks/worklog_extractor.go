@@ -45,6 +45,7 @@ func ExtractWorklogs(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_WORKLOGS_TABLE,
+			PrimaryKeyExtractor:WORKLOG_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			var input apiv2models.Input

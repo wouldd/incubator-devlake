@@ -95,7 +95,7 @@ func (extractor *ApiExtractor) Execute() errors.Error {
 	defer cursor.Close()
 	// batch save divider
 	divider := NewBatchSaveDivider(extractor.args.Ctx, extractor.args.BatchSize, extractor.table, extractor.params)
-
+	rowsProcessed:=0
 	// progress
 	extractor.args.Ctx.SetProgress(0, -1)
 	ctx := extractor.args.Ctx.GetContext()
@@ -105,23 +105,30 @@ func (extractor *ApiExtractor) Execute() errors.Error {
 		case <-ctx.Done():
 			return errors.Convert(ctx.Err())
 		default:
+			logger.Debug("context not done")
 		}
 		row := &RawData{}
+		logger.Debug("processing row %v", row)
+		rowsProcessed++
 		err = db.Fetch(cursor, row)
 		if err != nil {
+			logger.Debug("error fetching row %d", row)
 			return errors.Default.Wrap(err, "error fetching row")
 		}
 
 		results, err := extractor.args.Extract(row)
+		logger.Debug("extracted %d results, from row %d, %v",len(results), rowsProcessed, row)
 		if err != nil {
 			return errors.Default.Wrap(err, "error calling plugin Extract implementation")
 		}
+		logger.Debug("extractor run on row with results %v", results)
 		for _, result := range results {
 			// get the batch operator for the specific type
 			batch, err := divider.ForType(reflect.TypeOf(result))
 			if err != nil {
 				return errors.Default.Wrap(err, "error getting batch from result")
 			}
+			
 			// set raw data origin field
 			setRawDataOrigin(result, common.RawDataOrigin{
 				RawDataTable:  extractor.table,
@@ -129,6 +136,8 @@ func (extractor *ApiExtractor) Execute() errors.Error {
 				RawDataParams: row.Params,
 			})
 			// records get saved into db when slots were max outed
+			logger.Debug("extractor add result %v of type %v RawDataTable: table %s", result,reflect.TypeOf(result), extractor.table)
+			
 			err = batch.Add(result)
 			if err != nil {
 				return errors.Default.Wrap(err, "error adding result to batch")
@@ -136,7 +145,10 @@ func (extractor *ApiExtractor) Execute() errors.Error {
 		}
 		extractor.args.Ctx.IncProgress(1)
 	}
-
+	if int64(rowsProcessed) < count{
+		logger.Debug("ERROR batch added less rows than we found in the raw data table %d vs %d", rowsProcessed, count)
+	}
+	logger.Debug("Batch added %d to extacted tables vs %d", rowsProcessed, count)
 	// save the last batches
 	return divider.Close()
 }

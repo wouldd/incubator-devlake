@@ -73,9 +73,10 @@ func ExtractIssues(taskCtx plugin.SubTaskContext) errors.Error {
 				Table store raw data
 			*/
 			Table: RAW_ISSUE_TABLE,
+			PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
-			return extractIssues(data, mappings, row)
+			return extractIssues(data, mappings, row, taskCtx)
 		},
 	})
 	if err != nil {
@@ -84,7 +85,9 @@ func ExtractIssues(taskCtx plugin.SubTaskContext) errors.Error {
 	return extractor.Execute()
 }
 
-func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData) ([]interface{}, errors.Error) {
+func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,taskCtx plugin.SubTaskContext) ([]interface{}, errors.Error) {
+	logger := taskCtx.GetLogger()
+	logger.Info("extractIssues called with %v", row)
 	var apiIssue apiv2models.Issue
 	err := errors.Convert(json.Unmarshal(row.Data, &apiIssue))
 	if err != nil {
@@ -108,6 +111,7 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData)
 			IssueCreatedDate: &issue.Created,
 			ResolutionDate:   issue.ResolutionDate,
 		}
+		logger.Debug("appending sprint issue %v for sprint %v", issue.IssueId, sprintId)
 		results = append(results, sprintIssue)
 	}
 	if issue.ResolutionDate != nil {
@@ -141,6 +145,7 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData)
 		issue.StdStatus = value.StandardStatus
 	}
 	// issue commments
+	logger.Debug("appending issue %v", issue.IssueId)
 	results = append(results, issue)
 	for _, comment := range comments {
 		results = append(results, comment)
@@ -171,6 +176,7 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData)
 			results = append(results, user)
 		}
 	}
+	logger.Debug("appending jiraBoardissue %v to %v", issue.IssueId,data.Options.BoardId)
 	results = append(results, &models.JiraBoardIssue{
 		ConnectionId: data.Options.ConnectionId,
 		BoardId:      data.Options.BoardId,

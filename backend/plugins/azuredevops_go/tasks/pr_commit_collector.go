@@ -34,6 +34,7 @@ func init() {
 }
 
 const RawPrCommitTable = "azuredevops_go_api_pull_request_commits"
+const PRCOMMIT_PRIMARY_KEY_PATH = "commitId"
 
 var CollectApiPullRequestCommitsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiPullRequestCommits",
@@ -50,7 +51,7 @@ type SimplePr struct {
 }
 
 func CollectApiPullRequestCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable,PRCOMMIT_PRIMARY_KEY_PATH)
 	db := taskCtx.GetDal()
 
 	cursor, err := db.Cursor(

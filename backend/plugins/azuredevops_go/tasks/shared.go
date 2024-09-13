@@ -52,12 +52,13 @@ type CustomPageDate struct {
 	ContinuationToken string
 }
 
-func CreateRawDataSubTaskArgs(taskCtx plugin.SubTaskContext, Table string) (*api.RawDataSubTaskArgs, *AzuredevopsTaskData) {
+func CreateRawDataSubTaskArgs(taskCtx plugin.SubTaskContext, Table string, PrimaryKeyPath string ) (*api.RawDataSubTaskArgs, *AzuredevopsTaskData) {
 	data := taskCtx.GetData().(*AzuredevopsTaskData)
 	RawDataSubTaskArgs := &api.RawDataSubTaskArgs{
 		Ctx:     taskCtx,
 		Options: data.Options,
 		Table:   Table,
+		PrimaryKeyExtractor:PrimaryKeyPath,
 	}
 	return RawDataSubTaskArgs, data
 }

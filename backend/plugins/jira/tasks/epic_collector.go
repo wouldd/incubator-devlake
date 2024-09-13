@@ -35,6 +35,7 @@ import (
 )
 
 const RAW_EPIC_TABLE = "jira_api_epics"
+const EPIC_PRIMARY_KEY_PATH = "id"
 
 var _ plugin.SubTaskEntryPoint = CollectEpics
 
@@ -66,6 +67,7 @@ func CollectEpics(taskCtx plugin.SubTaskContext) errors.Error {
 			BoardId:      data.Options.BoardId,
 		},
 		Table: RAW_EPIC_TABLE,
+		PrimaryKeyExtractor:EPIC_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

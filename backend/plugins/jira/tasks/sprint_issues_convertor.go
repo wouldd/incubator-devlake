@@ -66,6 +66,7 @@ func ConvertSprintIssues(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_ISSUE_TABLE,
+			PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
 		},
 		Convert: func(inputRow interface{}) ([]interface{}, errors.Error) {
 			jiraSprintIssue := inputRow.(*models.JiraSprintIssue)

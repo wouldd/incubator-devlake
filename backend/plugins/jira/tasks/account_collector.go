@@ -33,6 +33,7 @@ import (
 )
 
 const RAW_USERS_TABLE = "jira_api_users"
+const USERS_PRIMARY_KEY_PATH = "accountId"
 
 var CollectAccountsMeta = plugin.SubTaskMeta{
 	Name:             "collectAccounts",
@@ -73,11 +74,12 @@ func CollectAccounts(taskCtx plugin.SubTaskContext) errors.Error {
 	collector, err := api.NewApiCollector(api.ApiCollectorArgs{
 		RawDataSubTaskArgs: api.RawDataSubTaskArgs{
 			Ctx: taskCtx,
-			Params: JiraApiParams{
+			Params: JiraApiParams{ 
 				ConnectionId: data.Options.ConnectionId,
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_USERS_TABLE,
+			PrimaryKeyExtractor:USERS_PRIMARY_KEY_PATH,
 		},
 		ApiClient:   data.ApiClient,
 		Input:       iterator,

@@ -48,6 +48,7 @@ func ExtractStatus(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      boardId,
 			},
 			Table: RAW_STATUS_TABLE,
+			PrimaryKeyExtractor:STATUS_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			var apiStatus apiv2models.Status

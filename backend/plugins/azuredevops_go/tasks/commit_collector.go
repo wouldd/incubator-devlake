@@ -28,6 +28,7 @@ func init() {
 }
 
 const RawCommitTable = "azuredevops_go_api_commits"
+const COMMIT_PRIMARY_KEY_PATH = "commitId"
 
 var CollectCommitsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiCommits",
@@ -39,7 +40,7 @@ var CollectCommitsMeta = plugin.SubTaskMeta{
 }
 
 func CollectApiCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable,COMMIT_PRIMARY_KEY_PATH)
 
 	collector, err := api.NewApiCollector(api.ApiCollectorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

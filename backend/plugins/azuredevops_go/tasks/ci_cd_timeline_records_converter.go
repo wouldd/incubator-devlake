@@ -46,7 +46,7 @@ var ConvertApiTimelineRecordsMeta = plugin.SubTaskMeta{
 }
 
 func ConvertApiTimelineRecords(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable,TIMELINERECORD_PRIMARY_KEY_PATH)
 	db := taskCtx.GetDal()
 
 	clauses := []dal.Clause{

@@ -27,7 +27,7 @@ import (
 )
 
 const RAW_STATUS_TABLE = "jira_api_status"
-
+const STATUS_PRIMARY_KEY_PATH = "id"
 var CollectStatusMeta = plugin.SubTaskMeta{
 	Name:             "collectStatus",
 	EntryPoint:       CollectStatus,
@@ -47,6 +47,7 @@ func CollectStatus(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_STATUS_TABLE,
+			PrimaryKeyExtractor:STATUS_PRIMARY_KEY_PATH,
 		},
 		ApiClient:     data.ApiClient,
 		UrlTemplate:   "api/2/status",

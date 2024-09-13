@@ -45,6 +45,7 @@ func ExtractAccounts(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_USERS_TABLE,
+			PrimaryKeyExtractor:USERS_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			var user apiv2models.Account

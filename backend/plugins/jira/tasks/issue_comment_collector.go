@@ -36,6 +36,7 @@ import (
 var _ plugin.SubTaskEntryPoint = CollectIssueComments
 
 const RAW_ISSUE_COMMENT_TABLE = "jira_api_issue_comments"
+const ISSUE_COMMENT_PRIMARY_KEY_PATH = "id"
 
 var CollectIssueCommentsMeta = plugin.SubTaskMeta{
 	Name:             "collectIssueComments",
@@ -60,6 +61,7 @@ func CollectIssueComments(taskCtx plugin.SubTaskContext) errors.Error {
 			BoardId:      data.Options.BoardId,
 		},
 		Table: RAW_ISSUE_COMMENT_TABLE,
+		PrimaryKeyExtractor:ISSUE_COMMENT_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

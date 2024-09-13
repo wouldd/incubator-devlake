@@ -106,6 +106,7 @@ func (c *BatchSave) Add(slot interface{}) errors.Error {
 	c.current++
 	// flush out into database if maxed out
 	if c.current == c.size {
+		c.log.Debug("batch flush without lock as maxed batch at: %d", c.current)
 		return c.flushWithoutLocking()
 	} else if c.current%100 == 0 {
 		c.log.Debug("batch save current: %d", c.current)
@@ -133,7 +134,7 @@ func (c *BatchSave) flushWithoutLocking() errors.Error {
 		c.lastErr = err
 		return err
 	}
-	c.log.Debug("batch save flush total %d records to database", c.current)
+	c.log.Debug("batch save flush total %d records to database table: %s", c.current, c.tableName)
 	c.current = 0
 	c.valueIndex = make(map[string]int)
 	return nil

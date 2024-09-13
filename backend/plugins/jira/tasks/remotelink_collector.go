@@ -30,7 +30,7 @@ import (
 )
 
 const RAW_REMOTELINK_TABLE = "jira_api_remotelinks"
-
+const REMOTELINK_PRIMARY_KEY_PATH = "id"
 var _ plugin.SubTaskEntryPoint = CollectRemotelinks
 
 var CollectRemotelinksMeta = plugin.SubTaskMeta{
@@ -59,6 +59,7 @@ func CollectRemotelinks(taskCtx plugin.SubTaskContext) errors.Error {
 			BoardId:      data.Options.BoardId,
 		},
 		Table: RAW_REMOTELINK_TABLE,
+		PrimaryKeyExtractor:REMOTELINK_PRIMARY_KEY_PATH,
 	})
 	if err != nil {
 		return err

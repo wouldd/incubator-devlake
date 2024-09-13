@@ -43,7 +43,7 @@ var ExtractApiPullRequestCommitsMeta = plugin.SubTaskMeta{
 }
 
 func ExtractApiPullRequestCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPrCommitTable,PRCOMMIT_PRIMARY_KEY_PATH)
 
 	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{
 		RawDataSubTaskArgs: *rawDataSubTaskArgs,

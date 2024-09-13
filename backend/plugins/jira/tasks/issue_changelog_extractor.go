@@ -50,6 +50,7 @@ func ExtractIssueChangelogs(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_CHANGELOG_TABLE,
+			PrimaryKeyExtractor:CHANGELOG_PRIMARY_KEY_PATH,
 		},
 		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
 			// process input

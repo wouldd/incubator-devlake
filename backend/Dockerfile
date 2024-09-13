@@ -39,8 +39,11 @@ ARG HTTPS_PROXY=
 RUN apt-get update
 RUN apt-get install -y gcc binutils libfindbin-libs-perl cmake libssh2-1-dev libssl-dev zlib1g-dev
 
+RUN if [ "$(arch)" != "aarch64" ] ; then \
+    apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu ; \
+    fi
 RUN if [ "$(arch)" != "x86_64" ] ; then \
-        apt-get install -y gcc-x86-64-linux-gnu binutils-x86-64-linux-gnu ; \
+    apt-get install -y gcc-x86-64-linux-gnu binutils-x86-64-linux-gnu ; \
     fi
 
 RUN go install github.com/vektra/mockery/v2@v2.20.0
@@ -52,20 +55,20 @@ COPY --from=debian-amd64 /lib/x86_64-linux-gnu /rootfs-amd64/lib/x86_64-linux-gn
 
 
 RUN for arch in aarch64 x86_64 ; do \
-        mkdir -p /tmp/build/${arch} && cd /tmp/build/${arch} && \
-        wget https://github.com/libgit2/libgit2/archive/refs/tags/v1.3.2.tar.gz -O - | tar -xz && \
-        cd libgit2-1.3.2 && \
-        mkdir build && cd build && \
-        if [ "$arch" = "aarch64" ] ; then \
-            cmake .. -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-                -DBUILD_SHARED_LIBS=ON -DCMAKE_SYSROOT=/rootfs-arm64 \
-                -DCMAKE_INSTALL_PREFIX=/usr/local/deps/${arch} ; \
-        elif [ "$arch" = "x86_64" ] ; then \
-            cmake .. -DCMAKE_C_COMPILER=x86_64-linux-gnu-gcc \
-                -DBUILD_SHARED_LIBS=ON -DCMAKE_SYSROOT=/rootfs-amd64 \
-                -DCMAKE_INSTALL_PREFIX=/usr/local/deps/${arch} ; \
-        fi && \
-        make -j install ; \
+    mkdir -p /tmp/build/${arch} && cd /tmp/build/${arch} && \
+    wget https://github.com/libgit2/libgit2/archive/refs/tags/v1.3.2.tar.gz -O - | tar -xz && \
+    cd libgit2-1.3.2 && \
+    mkdir build && cd build && \
+    if [ "$arch" = "aarch64" ] ; then \
+    cmake .. -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+    -DBUILD_SHARED_LIBS=ON -DCMAKE_SYSROOT=/rootfs-arm64 \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/deps/${arch} ; \
+    elif [ "$arch" = "x86_64" ] ; then \
+    cmake .. -DCMAKE_C_COMPILER=x86_64-linux-gnu-gcc \
+    -DBUILD_SHARED_LIBS=ON -DCMAKE_SYSROOT=/rootfs-amd64 \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/deps/${arch} ; \
+    fi && \
+    make -j install ; \
     done
 
 
@@ -78,17 +81,17 @@ ENV GOBIN=/app/bin
 ARG TARGETPLATFORM
 ARG TAG=
 ARG SHA=
-ARG GO_PLUGINS=
+ARG GO_PLUGINS=jira,azuredevops_go,gitextractor,webhook,dora,refdiff,org
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     if [ "$TARGETPLATFORM" = "linux/arm64" ] ; then \
-        ln -s /usr/local/deps/aarch64 /usr/local/deps/target && \
-        export CC=aarch64-linux-gnu-gcc && \
-        export GOARCH=arm64 ; \
+    ln -s /usr/local/deps/aarch64 /usr/local/deps/target && \
+    export CC=aarch64-linux-gnu-gcc && \
+    export GOARCH=arm64 ; \
     else \
-        ln -s /usr/local/deps/x86_64 /usr/local/deps/target && \
-        export CC=x86_64-linux-gnu-gcc && \
-        export GOARCH=amd64 ; \
+    ln -s /usr/local/deps/x86_64 /usr/local/deps/target && \
+    export CC=x86_64-linux-gnu-gcc && \
+    export GOARCH=amd64 ; \
     fi && \
     export PKG_CONFIG_PATH=/usr/local/deps/target/lib/pkgconfig && \
     export CGO_ENABLED=1 &&\
@@ -97,9 +100,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # remove symlink in lib, we will recreate in final image
 RUN cd /usr/local/deps/target/lib && \
     for file in *.so* ; do \
-        if [ -L $file ] ; then \
-            unlink $file ; \
-        fi \
+    if [ -L $file ] ; then \
+    unlink $file ; \
+    fi \
     done
 
 
@@ -109,22 +112,22 @@ RUN apt-get update && \
     apt-get install -y python3-dev python3-pip tar pkg-config curl libssh2-1 zlib1g libffi-dev default-libmysqlclient-dev libpq-dev tini git openssh-client corkscrew && \
     apt-get clean && \
     rm -fr /usr/share/doc/* \
-           /usr/share/info/* \
-           /usr/share/linda/* \
-           /usr/share/lintian/overrides/* \
-           /usr/share/locale/* \
-           /usr/share/man/* \
-           /usr/share/doc/kde/HTML/* \
-           /usr/share/gnome/help/* \
-           /usr/share/locale/* \
-           /usr/share/omf/*/*-*.emf \
-           /var/lib/apt/lists/*
+    /usr/share/info/* \
+    /usr/share/linda/* \
+    /usr/share/lintian/overrides/* \
+    /usr/share/locale/* \
+    /usr/share/man/* \
+    /usr/share/doc/kde/HTML/* \
+    /usr/share/gnome/help/* \
+    /usr/share/locale/* \
+    /usr/share/omf/*/*-*.emf \
+    /var/lib/apt/lists/*
 
 EXPOSE 8080
 
 RUN useradd -ms /bin/bash -d /app devlake -u 1010
 RUN chown -R devlake:devlake /etc/ssl/certs
-USER devlake
+USER 1010
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
@@ -135,14 +138,17 @@ VOLUME /app/logs
 # Setup Python
 COPY python/ /app/python/
 RUN python3 -m pip install --no-cache --upgrade pip setuptools && \
-    python3 -m pip install --no-cache -r python/requirements.txt
+    python3 -m pip install --no-cache -r python/requirements.txt && \
+    pip install --upgrade pip
 
 # Setup Python Poetry package manager
 RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="$PATH:/app/.local/bin"
 
 # Build Python plugins, make sure the scripts has execute permission
-# RUN find /app/python/ -name "*.sh" | xargs -I{} chmod +x {}
+USER root
+RUN find /app/python/ -name "*.sh" | xargs -I{} chmod +x {}
+USER 1010
 RUN /app/python/build.sh
 
 FROM base as devlake-base
@@ -166,4 +172,3 @@ ENV DEBUG="$DEBUG"
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 CMD ["lake"]
-

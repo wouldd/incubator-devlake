@@ -42,7 +42,7 @@ var ExtractApiBuildsMeta = plugin.SubTaskMeta{
 }
 
 func ExtractApiBuilds(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawBuildTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawBuildTable,BUILDS_PRIMARY_KEY_PATH)
 	logger := taskCtx.GetLogger()
 
 	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{

@@ -45,7 +45,7 @@ var ConvertApiPullRequestsMeta = plugin.SubTaskMeta{
 }
 
 func ConvertApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable,PR_PRIMARY_KEY_PATH)
 	db := taskCtx.GetDal()
 	clauses := []dal.Clause{
 		dal.From(&models.AzuredevopsPullRequest{}),

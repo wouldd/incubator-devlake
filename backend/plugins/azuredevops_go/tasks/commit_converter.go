@@ -44,7 +44,7 @@ var ConvertCommitsMeta = plugin.SubTaskMeta{
 }
 
 func ConvertApiCommits(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable,COMMIT_PRIMARY_KEY_PATH)
 	db := taskCtx.GetDal()
 
 	// select all commits belongs to the repository

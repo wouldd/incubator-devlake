@@ -28,7 +28,7 @@ import (
 )
 
 const RAW_PROJECT_TABLE = "jira_api_projects"
-
+const PROJECT_PRIMARY_KEY_PATH = "id"
 var _ plugin.SubTaskEntryPoint = CollectProjects
 
 var CollectProjectsMeta = plugin.SubTaskMeta{
@@ -52,6 +52,7 @@ func CollectProjects(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_PROJECT_TABLE,
+			PrimaryKeyExtractor:PROJECT_PRIMARY_KEY_PATH,
 		},
 		ApiClient:   data.ApiClient,
 		UrlTemplate: "api/2/project",

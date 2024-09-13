@@ -29,7 +29,7 @@ import (
 )
 
 const RAW_SPRINT_TABLE = "jira_api_sprints"
-
+const SPRINT_PRIMARY_KEY_PATH = "id"
 var _ plugin.SubTaskEntryPoint = CollectSprints
 
 var CollectSprintsMeta = plugin.SubTaskMeta{
@@ -53,6 +53,7 @@ func CollectSprints(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_SPRINT_TABLE,
+			PrimaryKeyExtractor:SPRINT_PRIMARY_KEY_PATH,
 		},
 		ApiClient:   data.ApiClient,
 		PageSize:    50,
