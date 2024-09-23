@@ -150,8 +150,8 @@ func (p Jira) SubTaskMetas() []plugin.SubTaskMeta {
 		tasks.ConvertSprintsMeta,
 		tasks.ConvertSprintIssuesMeta,
 
-		tasks.CollectDevelopmentPanelMeta,
-		tasks.ExtractDevelopmentPanelMeta,
+		//tasks.CollectDevelopmentPanelMeta,
+		//tasks.ExtractDevelopmentPanelMeta,
 
 		tasks.ConvertIssueCommitsMeta,
 		tasks.ConvertIssueRepoCommitsMeta,

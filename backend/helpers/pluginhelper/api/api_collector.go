@@ -19,6 +19,7 @@ package api
 
 import (
 	"bytes"
+	"strings"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -492,14 +493,14 @@ func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int
 			extractedID, err := ExtractField(msg, collector.args.PrimaryKeyExtractor)
 			if err != nil {
 				jsonString := string(msg)
-				logger.Debug("failed to parse id from message %s using extractino path %s", jsonString,collector.args.PrimaryKeyExtractor) 
+				logger.Debug("failed to parse id from message %s using extraction path %s", jsonString,collector.args.PrimaryKeyExtractor) 
 				return errors.Default.Wrap(err,fmt.Sprintf("failed to extract ID: %v with error %w", msg, err))
 			}
 			idStr := fmt.Sprintf("%v", extractedID) // Convert the ID to string
 			idUint64, err := strconv.ParseUint(idStr, 10, 64) // Convert the string to uint64
 			if err != nil {
 				logger.Debug("failed to convert id to idUnit64: %w", extractedID)
-				idUint64 := hashID(idStr)
+				idUint64 = hashID(idStr)
 				logger.Debug("hashed instead to idUnit64: %w", idUint64)
 			}
 			rows[i] = &RawData{
@@ -510,9 +511,26 @@ func (collector *ApiCollector) fetchAsync(reqData *RequestData, handler func(int
 				Input:  reqData.InputJSON,
 			}
 		}
-		err = db.CreateOrUpdate(rows, dal.From(collector.table))
+		maxRetries := 5
+		
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			err = db.CreateOrUpdate(rows, dal.From(collector.table))
+			if err == nil {
+				break // Success, exit loop
+			}
+
+			// Check if it's a deadlock error (MySQL error code 1213)
+			if strings.Contains(err.Error(), "Error 1213 (40001): Deadlock") {
+				logger.Warn(err,"Deadlock detected during createOrUpdate, retrying... Attempt #%d", attempt)
+				time.Sleep(time.Duration(attempt) * time.Second) // Exponential backoff
+			} else {
+				logger.Error(err,"Error during createOrUpdate: %v", err)
+				return errors.Default.Wrap(err, fmt.Sprintf("error inserting raw rows into %s", collector.table))
+			}
+		}
+
 		if err != nil {
-			return errors.Default.Wrap(err, fmt.Sprintf("error inserting raw rows into %s", collector.table))
+			return errors.Default.Wrap(err, "Max retries reached for CreateOrUpdate")
 		}
 		logger.Debug("fetchAsync === total %d rows were saved into table %s", count, collector.table)
 		// increase progress only when it was not nested

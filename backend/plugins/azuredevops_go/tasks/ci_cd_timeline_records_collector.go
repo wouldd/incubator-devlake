@@ -32,7 +32,7 @@ func init() {
 }
 
 const RawTimelineRecordTable = "azuredevops_go_api_timeline_records"
-const TIMELINERECORD_PRIMARY_KEY_PATH = "timelineId"
+const TIMELINERECORD_PRIMARY_KEY_PATH = "id"
 
 var CollectJobsMeta = plugin.SubTaskMeta{
 	Name:             "collectApiTimelineRecords",

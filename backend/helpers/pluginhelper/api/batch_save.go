@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/apache/incubator-devlake/core/context"
 	"github.com/apache/incubator-devlake/core/dal"
@@ -129,8 +130,28 @@ func (c *BatchSave) flushWithoutLocking() errors.Error {
 	if c.tableName != "" {
 		clauses = append(clauses, dal.From(c.tableName))
 	}
-	err := c.db.CreateOrUpdate(c.slots.Slice(0, c.current).Interface(), clauses...)
+	maxRetries := 5
+	var err errors.Error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := c.db.CreateOrUpdate(c.slots.Slice(0, c.current).Interface(), clauses...)
+		if err == nil {
+			break // Success, exit loop
+		}
+
+		// Check if it's a deadlock error (MySQL error code 1213)
+		if strings.Contains(err.Error(), "Error 1213 (40001): Deadlock") {
+			c.log.Warn(err,"Deadlock detected during bastchsave createOrUpdate, retrying... Attempt #%d", attempt)
+			time.Sleep(time.Duration(attempt) * time.Second) // Exponential backoff
+		} else {
+			c.log.Error(err,"Error during batchsave createOrUpdate: %v", err)
+			return errors.Default.Wrap(err, fmt.Sprintf("error inserting raw rows into %s", c.tableName))
+		}
+	}
+
+		
 	if err != nil {
+		c.log.Error(err,"Max retries reached for batchsave CreateOrUpdate: %v", err)
 		c.lastErr = err
 		return err
 	}

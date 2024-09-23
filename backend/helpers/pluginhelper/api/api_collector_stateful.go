@@ -119,6 +119,7 @@ func NewStatefulApiCollectorForFinalizableEntity(args FinalizableApiCollectorArg
 		Options: args.Options,
 		Params:  args.Params,
 		Table:   args.Table,
+		PrimaryKeyExtractor:args.PrimaryKeyExtractor,
 	})
 	if err != nil {
 		return nil, err
