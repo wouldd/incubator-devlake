@@ -71,9 +71,14 @@ func (p Icla) PrepareTaskData(taskCtx plugin.TaskContext, options map[string]int
 		return nil, err
 	}
 
-	apiClient, err := errors.Convert01(tasks.NewIclaApiClient(taskCtx))
-	if err != nil {
-		return nil, err
+	var apiClient *helper.ApiAsyncClient
+	syncPolicy := taskCtx.SyncPolicy()
+	if !syncPolicy.SkipCollectors {
+		newApiClient, err := errors.Convert01(tasks.NewIclaApiClient(taskCtx))
+		if err != nil {
+			return nil, err
+		}
+		apiClient = newApiClient
 	}
 
 	return &tasks.IclaTaskData{
@@ -96,6 +101,10 @@ func (p Icla) MigrationScripts() []plugin.MigrationScript {
 }
 
 func (p Icla) ApiResources() map[string]map[string]plugin.ApiResourceHandler {
+	return nil
+}
+
+func (p Icla) TestConnection(id uint64) errors.Error {
 	return nil
 }
 

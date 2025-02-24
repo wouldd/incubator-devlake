@@ -23,12 +23,12 @@ import { Flex, Table, Button, Modal, Input } from 'antd';
 
 import API from '@/api';
 import { PageHeader, Block, IconButton } from '@/components';
-import { getCron, PATHS } from '@/config';
-import { ConnectionName } from '@/features/connections';
+import { getCron } from '@/config';
 import { useRefreshData } from '@/hooks';
 import { OnboardTour } from '@/routes/onboard/components';
 import { formatTime, operator } from '@/utils';
 import { PipelineStatus } from '@/routes/pipeline';
+import { ConnectionName } from '@/plugins';
 import { IBlueprint } from '@/types';
 
 export const ProjectHomePage = () => {
@@ -102,7 +102,7 @@ export const ProjectHomePage = () => {
   };
 
   return (
-    <PageHeader breadcrumbs={[{ name: 'Projects', path: PATHS.PROJECTS() }]}>
+    <PageHeader breadcrumbs={[{ name: 'Projects', path: '/projects' }]}>
       <Flex style={{ marginBottom: 16 }} justify="flex-end">
         <Button type="primary" icon={<PlusOutlined />} onClick={handleShowDialog}>
           New Project
@@ -119,7 +119,7 @@ export const ProjectHomePage = () => {
             key: 'name',
             render: (name: string) => (
               <Link
-                to={PATHS.PROJECT(name)}
+                to={`/projects/${encodeURIComponent(name)}/general-settings`}
                 state={{ activeKey: 'configuration' }}
                 style={{ color: '#292b3f' }}
                 ref={nameRef}
@@ -182,9 +182,9 @@ export const ProjectHomePage = () => {
                 ref={configRef}
                 type="primary"
                 icon={<SettingOutlined />}
-                helptip="Project Configuration"
+                helptip="Project Settings"
                 onClick={() =>
-                  navigate(PATHS.PROJECT(name), {
+                  navigate(`/projects/${encodeURIComponent(name)}/general-settings`, {
                     state: { activeKey: 'configuration' },
                   })
                 }

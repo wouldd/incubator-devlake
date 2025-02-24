@@ -17,17 +17,16 @@
 # https://stackoverflow.com/questions/920413/make-error-missing-separator
 # https://tutorialedge.net/golang/makefiles-for-go-developers/
 
-SHA := $(shell if [ -d .git ]; then git show -s --format=%h; else echo "default_SHA"; fi)
-TAG := $(shell if [ -d .git ]; then git tag --points-at HEAD; else echo "default_TAG"; fi)
+SHA ?= $(shell git show -s --format=%h 2>/dev/null || echo "default_SHA")
+TAG ?= $(shell git tag --points-at HEAD 2>/dev/null || echo "default_TAG")
 IMAGE_REPO ?= "apache"
 VERSION = $(TAG)@$(SHA)
 PYTHON_DIR ?= "./python"
 
-
 all: build
 
 go-dep:
-	go install github.com/vektra/mockery/v2@2.43.0
+	go install github.com/vektra/mockery/v2@v2.43.0
 	go install github.com/swaggo/swag/cmd/swag@v1.16.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
 

@@ -77,6 +77,10 @@ func (p Webhook) MigrationScripts() []plugin.MigrationScript {
 	return migrationscripts.All()
 }
 
+func (p Webhook) TestConnection(id uint64) errors.Error {
+	return nil
+}
+
 func (p Webhook) ApiResources() map[string]map[string]plugin.ApiResourceHandler {
 	return map[string]map[string]plugin.ApiResourceHandler{
 		"connections": {
@@ -105,6 +109,20 @@ func (p Webhook) ApiResources() map[string]map[string]plugin.ApiResourceHandler 
 		},
 		":connectionId/issue/:issueKey/close": {
 			"POST": api.CloseIssue,
+		},
+		"connections/by-name/:connectionName": {
+			"GET":    api.GetConnectionByName,
+			"PATCH":  api.PatchConnectionByName,
+			"DELETE": api.DeleteConnectionByName,
+		},
+		"connections/by-name/:connectionName/deployments": {
+			"POST": api.PostDeploymentsByName,
+		},
+		"connections/by-name/:connectionName/issues": {
+			"POST": api.PostIssueByName,
+		},
+		"connections/by-name/:connectionName/issue/:issueKey/close": {
+			"POST": api.CloseIssueByName,
 		},
 	}
 }

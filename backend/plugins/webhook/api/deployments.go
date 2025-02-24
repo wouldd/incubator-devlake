@@ -21,7 +21,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/apache/incubator-devlake/core/dal"
@@ -44,6 +43,7 @@ type WebhookDeploymentReq struct {
 	Result       string `mapstructure:"result"`
 	Environment  string `validate:"omitempty,oneof=PRODUCTION STAGING TESTING DEVELOPMENT"`
 	Name         string `mapstructure:"name"`
+	Url          string `mapstructure:"url"`
 	// DeploymentCommits is used for multiple commits in one deployment
 	DeploymentCommits []WebhookDeploymentCommitReq `mapstructure:"deploymentCommits" validate:"omitempty,dive"`
 	CreatedDate       *time.Time                   `mapstructure:"createdDate"`
@@ -84,6 +84,31 @@ type WebhookDeploymentCommitReq struct {
 func PostDeployments(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	connection := &models.WebhookConnection{}
 	err := connectionHelper.First(connection, input.Params)
+
+	return postDeployments(input, connection, err)
+}
+
+// PostDeploymentsByName
+// @Summary create deployment by webhook name
+// @Description Create deployment pipeline by webhook name.<br/>
+// @Description example1: {"repo_url":"devlake","commit_sha":"015e3d3b480e417aede5a1293bd61de9b0fd051d","start_time":"2020-01-01T12:00:00+00:00","end_time":"2020-01-01T12:59:59+00:00","environment":"PRODUCTION"}<br/>
+// @Description So we suggest request before task after deployment pipeline finish.
+// @Description Both cicd_pipeline and cicd_task will be created
+// @Tags plugins/webhook
+// @Param body body WebhookDeploymentReq true "json body"
+// @Success 200
+// @Failure 400  {string} errcode.Error "Bad Request"
+// @Failure 403  {string} errcode.Error "Forbidden"
+// @Failure 500  {string} errcode.Error "Internal Error"
+// @Router /plugins/webhook/connections/by-name/:connectionName/deployments [POST]
+func PostDeploymentsByName(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	connection := &models.WebhookConnection{}
+	err := connectionHelper.FirstByName(connection, input.Params)
+
+	return postDeployments(input, connection, err)
+}
+
+func postDeployments(input *plugin.ApiResourceInput, connection *models.WebhookConnection, err errors.Error) (*plugin.ApiResourceOutput, errors.Error) {
 	if err != nil {
 		return nil, err
 	}
@@ -135,19 +160,15 @@ func CreateDeploymentAndDeploymentCommits(connection *models.WebhookConnection, 
 		request.Environment = devops.PRODUCTION
 	}
 	duration := float64(request.FinishedDate.Sub(*request.StartedDate).Milliseconds() / 1e3)
-	name := request.Name
-	if name == "" {
-		var commitShaList []string
-		for _, commit := range request.DeploymentCommits {
-			commitShaList = append(commitShaList, commit.CommitSha)
-		}
-		name = fmt.Sprintf(`deploy %s to %s`, strings.Join(commitShaList, ","), request.Environment)
-	}
 	createdDate := time.Now()
 	if request.CreatedDate != nil {
 		createdDate = *request.CreatedDate
 	} else if request.StartedDate != nil {
 		createdDate = *request.StartedDate
+	}
+	name := request.Name
+	if name == "" {
+		name = fmt.Sprintf(`deploy to %s at %s`, request.Environment, createdDate.Format(time.RFC3339))
 	}
 
 	// prepare deploymentCommits and deployment records
@@ -214,6 +235,7 @@ func CreateDeploymentAndDeploymentCommits(connection *models.WebhookConnection, 
 	deployment.StartedDate = request.StartedDate
 	deployment.FinishedDate = request.FinishedDate
 	deployment.Result = request.Result
+	deployment.Url = request.Url
 	if err := tx.CreateOrUpdate(deployment); err != nil {
 		logger.Error(err, "failed to save deployment")
 		return err

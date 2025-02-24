@@ -142,9 +142,14 @@ func (p Teambition) PrepareTaskData(taskCtx plugin.TaskContext, options map[stri
 		return nil, errors.Default.Wrap(err, "unable to get Teambition connection by the given connection ID")
 	}
 
-	apiClient, err := tasks.NewTeambitionApiClient(taskCtx, connection)
-	if err != nil {
-		return nil, errors.Default.Wrap(err, "unable to get Teambition API client instance")
+	var apiClient *helper.ApiAsyncClient
+	syncPolicy := taskCtx.SyncPolicy()
+	if !syncPolicy.SkipCollectors {
+		newApiClient, err := tasks.NewTeambitionApiClient(taskCtx, connection)
+		if err != nil {
+			return nil, errors.Default.Wrap(err, "unable to get Teambition API client instance")
+		}
+		apiClient = newApiClient
 	}
 	taskData := &tasks.TeambitionTaskData{
 		Options:   op,
@@ -162,6 +167,11 @@ func (p Teambition) RootPkgPath() string {
 
 func (p Teambition) MigrationScripts() []plugin.MigrationScript {
 	return migrationscripts.All()
+}
+
+func (p Teambition) TestConnection(id uint64) errors.Error {
+	_, err := api.TestExistingConnection(helper.GenerateTestingConnectionApiResourceInput(id))
+	return err
 }
 
 func (p Teambition) ApiResources() map[string]map[string]plugin.ApiResourceHandler {

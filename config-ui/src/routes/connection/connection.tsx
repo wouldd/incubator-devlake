@@ -24,12 +24,11 @@ import { theme, Space, Table, Button, Modal, message } from 'antd';
 
 import API from '@/api';
 import { PageHeader, Message, IconButton } from '@/components';
-import { PATHS } from '@/config';
-import { useAppSelector } from '@/hooks';
 import { selectConnection } from '@/features/connections';
-import { useRefreshData } from '@/hooks';
+import { useAppSelector, useRefreshData } from '@/hooks';
 import {
   ConnectionStatus,
+  ConnectionName,
   DataScopeRemote,
   getPluginConfig,
   getPluginScopeId,
@@ -38,8 +37,6 @@ import {
 } from '@/plugins';
 import { IConnection } from '@/types';
 import { operator } from '@/utils';
-
-import * as S from './styled';
 
 const brandName = import.meta.env.DEVLAKE_BRAND_NAME ?? 'DevLake';
 
@@ -188,7 +185,7 @@ export const Connection = () => {
   return (
     <PageHeader
       breadcrumbs={[
-        { name: 'Connections', path: PATHS.CONNECTIONS() },
+        { name: 'Connections', path: '/connections' },
         { name, path: '' },
       ]}
     >
@@ -239,7 +236,7 @@ export const Connection = () => {
                     <ul>
                       {projects.map((it: string) => (
                         <li key={it}>
-                          <Link to={PATHS.PROJECT(it)}>{it}</Link>
+                          <Link to={`/projects/${encodeURIComponent(it)}`}>{it}</Link>
                         </li>
                       ))}
                     </ul>
@@ -314,12 +311,7 @@ export const Connection = () => {
           centered
           style={{ width: 820 }}
           footer={null}
-          title={
-            <S.ModalTitle>
-              <span className="icon">{pluginConfig.icon({ color: colorPrimary })}</span>
-              <span className="name">Add Data Scope: {name}</span>
-            </S.ModalTitle>
-          }
+          title={<ConnectionName plugin={plugin} connectionId={connectionId} customName={() => `Add Data Scope`} />}
           onCancel={handleHideDialog}
         >
           <DataScopeRemote
@@ -373,10 +365,7 @@ export const Connection = () => {
           centered
           footer={null}
           title={
-            <S.ModalTitle>
-              <span className="icon">{pluginConfig.icon({ color: colorPrimary })}</span>
-              <span>Associate Scope Config</span>
-            </S.ModalTitle>
+            <ConnectionName plugin={plugin} connectionId={connectionId} customName={() => `Associate Scope Config`} />
           }
           onCancel={handleHideDialog}
         >

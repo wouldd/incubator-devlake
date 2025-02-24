@@ -19,6 +19,8 @@ package impl
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/apache/incubator-devlake/core/context"
 	"github.com/apache/incubator-devlake/core/dal"
@@ -91,6 +93,7 @@ func (p Zentao) GetTablesInfo() []dal.Tabler {
 		&models.ZentaoExecutionSummary{},
 		&models.ZentaoProductSummary{},
 		&models.ZentaoProjectStory{},
+		&models.ZentaoWorklog{},
 	}
 }
 
@@ -135,8 +138,7 @@ func (p Zentao) SubTaskMetas() []plugin.SubTaskMeta {
 
 		tasks.CollectTaskCommitsMeta,
 		tasks.ExtractTaskCommitsMeta,
-		tasks.CollectTaskRepoCommitsMeta,
-		tasks.ExtractTaskRepoCommitsMeta,
+		tasks.DBGetTaskRepoCommitsMeta,
 		tasks.ConvertTaskRepoCommitsMeta,
 
 		// product
@@ -151,18 +153,20 @@ func (p Zentao) SubTaskMetas() []plugin.SubTaskMeta {
 
 		tasks.CollectStoryCommitsMeta,
 		tasks.ExtractStoryCommitsMeta,
-		tasks.CollectStoryRepoCommitsMeta,
-		tasks.ExtractStoryRepoCommitsMeta,
+		tasks.DBGetStoryRepoCommitsMeta,
 		tasks.ConvertStoryRepoCommitsMeta,
 
 		tasks.CollectBugCommitsMeta,
 		tasks.ExtractBugCommitsMeta,
-		tasks.CollectBugRepoCommitsMeta,
-		tasks.ExtractBugRepoCommitsMeta,
+		tasks.DBGetBugRepoCommitsMeta,
 		tasks.ConvertBugRepoCommitsMeta,
 
 		tasks.DBGetChangelogMeta,
 		tasks.ConvertChangelogMeta,
+
+		tasks.CollectTaskWorklogsMeta,
+		tasks.ExtractTaskWorklogsMeta,
+		tasks.ConvertTaskWorklogsMeta,
 	}
 }
 
@@ -182,9 +186,14 @@ func (p Zentao) PrepareTaskData(taskCtx plugin.TaskContext, options map[string]i
 		return nil, errors.Default.Wrap(err, "unable to get Zentao connection by the given connection ID: %v")
 	}
 
-	apiClient, err := tasks.NewZentaoApiClient(taskCtx, connection)
-	if err != nil {
-		return nil, errors.Default.Wrap(err, "unable to get Zentao API client instance: %v")
+	var apiClient *helper.ApiAsyncClient
+	syncPolicy := taskCtx.SyncPolicy()
+	if !syncPolicy.SkipCollectors {
+		newApiClient, err := tasks.NewZentaoApiClient(taskCtx, connection)
+		if err != nil {
+			return nil, errors.Default.Wrap(err, "unable to get Zentao API client instance: %v")
+		}
+		apiClient = newApiClient
 	}
 
 	if op.ScopeConfig == nil && op.ScopeConfigId != 0 {
@@ -203,34 +212,62 @@ func (p Zentao) PrepareTaskData(taskCtx plugin.TaskContext, options map[string]i
 		AccountCache: tasks.NewAccountCache(taskCtx.GetDal(), op.ConnectionId),
 	}
 
-	if connection.DbUrl != "" {
-		if connection.DbLoggingLevel == "" {
-			connection.DbLoggingLevel = taskCtx.GetConfig("DB_LOGGING_LEVEL")
+	if !syncPolicy.SkipCollectors {
+		if connection.DbUrl != "" {
+			if connection.DbLoggingLevel == "" {
+				connection.DbLoggingLevel = taskCtx.GetConfig("DB_LOGGING_LEVEL")
+			}
+
+			if connection.DbIdleConns == 0 {
+				connection.DbIdleConns = taskCtx.GetConfigReader().GetInt("DB_IDLE_CONNS")
+			}
+
+			if connection.DbMaxConns == 0 {
+				connection.DbMaxConns = taskCtx.GetConfigReader().GetInt("DB_MAX_CONNS")
+			}
+
+			v := viper.New()
+			v.Set("DB_URL", connection.DbUrl)
+			v.Set("DB_LOGGING_LEVEL", connection.DbLoggingLevel)
+			v.Set("DB_IDLE_CONNS", connection.DbIdleConns)
+			v.Set("DbMaxConns", connection.DbMaxConns)
+
+			rgorm, err := runner.NewGormDb(v, taskCtx.GetLogger())
+			if err != nil {
+				return nil, errors.Default.Wrap(err, fmt.Sprintf("failed to connect to the zentao remote databases %s", connection.DbUrl))
+			}
+
+			data.RemoteDb = dalgorm.NewDalgorm(rgorm)
 		}
-
-		if connection.DbIdleConns == 0 {
-			connection.DbIdleConns = taskCtx.GetConfigReader().GetInt("DB_IDLE_CONNS")
-		}
-
-		if connection.DbMaxConns == 0 {
-			connection.DbMaxConns = taskCtx.GetConfigReader().GetInt("DB_MAX_CONNS")
-		}
-
-		v := viper.New()
-		v.Set("DB_URL", connection.DbUrl)
-		v.Set("DB_LOGGING_LEVEL", connection.DbLoggingLevel)
-		v.Set("DB_IDLE_CONNS", connection.DbIdleConns)
-		v.Set("DbMaxConns", connection.DbMaxConns)
-
-		rgorm, err := runner.NewGormDb(v, taskCtx.GetLogger())
-		if err != nil {
-			return nil, errors.Default.Wrap(err, fmt.Sprintf("failed to connect to the zentao remote databases %s", connection.DbUrl))
-		}
-
-		data.RemoteDb = dalgorm.NewDalgorm(rgorm)
 	}
 
+	endpoint := connection.Endpoint
+	if data.ApiClient != nil {
+		endpoint = data.ApiClient.GetEndpoint()
+	}
+	homepage, err := getZentaoHomePage(endpoint)
+	if err != nil {
+		return data, errors.Convert(err)
+	}
+	data.HomePageURL = homepage
+
 	return data, nil
+}
+
+// getZentaoHomePage receive endpoint like "http://54.158.1.10:30001/api.php/v1/" and return zentao's homepage like "http://54.158.1.10:30001/"
+func getZentaoHomePage(endpoint string) (string, error) {
+	if endpoint == "" {
+		return "", errors.Default.New("empty endpoint")
+	}
+	endpointURL, err := url.Parse(endpoint)
+	if err != nil {
+		return "", err
+	} else {
+		protocol := endpointURL.Scheme
+		host := endpointURL.Host
+		zentaoPath, _, _ := strings.Cut(endpointURL.Path, "/api.php/v1")
+		return fmt.Sprintf("%s://%s%s", protocol, host, zentaoPath), nil
+	}
 }
 
 // RootPkgPath information lost when compiled as plugin(.so)
@@ -240,6 +277,11 @@ func (p Zentao) RootPkgPath() string {
 
 func (p Zentao) MigrationScripts() []plugin.MigrationScript {
 	return migrationscripts.All()
+}
+
+func (p Zentao) TestConnection(id uint64) errors.Error {
+	_, err := api.TestExistingConnection(helper.GenerateTestingConnectionApiResourceInput(id))
+	return err
 }
 
 func (p Zentao) ApiResources() map[string]map[string]plugin.ApiResourceHandler {

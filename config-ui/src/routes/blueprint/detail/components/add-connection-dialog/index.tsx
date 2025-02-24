@@ -17,12 +17,11 @@
  */
 
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { PlusOutlined } from '@ant-design/icons';
 import { Modal, Select, Space, Button } from 'antd';
 import styled from 'styled-components';
 
-import { PATHS } from '@/config';
 import { Block } from '@/components';
 import { selectAllConnections } from '@/features/connections';
 import { useAppSelector } from '@/hooks';
@@ -63,13 +62,11 @@ export const AddConnectionDialog = ({ disabled = [], onCancel, onSubmit }: Props
   const [step, setStep] = useState(1);
   const [selectedValue, setSelectedValue] = useState<string>();
 
-  const navigate = useNavigate();
-
   const connections = useAppSelector(selectAllConnections);
 
   const options = useMemo(
     () =>
-      [{ value: '' }].concat(
+      [{ plugin: '', label: '', value: '' }].concat(
         connections
           .filter((cs) => (disabled.length ? !disabled.includes(cs.unique) : true))
           .map((cs) => ({
@@ -111,9 +108,12 @@ export const AddConnectionDialog = ({ disabled = [], onCancel, onSubmit }: Props
               optionRender={(option, { index }) => {
                 if (index === 0) {
                   return (
-                    <Button size="small" type="link" icon={<PlusOutlined />}>
-                      Add New Connection
-                    </Button>
+                    <Link style={{ display: 'block' }} to="/connections" target="_blank">
+                      <Space>
+                        <PlusOutlined />
+                        <span>Add New Connection</span>
+                      </Space>
+                    </Link>
                   );
                 }
                 return (
@@ -124,7 +124,7 @@ export const AddConnectionDialog = ({ disabled = [], onCancel, onSubmit }: Props
               }}
               onChange={(value) => {
                 if (!value) {
-                  navigate(PATHS.CONNECTIONS());
+                  return;
                 }
                 setSelectedValue(value);
               }}

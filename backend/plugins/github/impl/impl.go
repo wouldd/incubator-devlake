@@ -19,6 +19,7 @@ package impl
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/subtaskmeta/sorter"
 
@@ -158,14 +159,24 @@ func (p Github) PrepareTaskData(taskCtx plugin.TaskContext, options map[string]i
 	}
 
 	regexEnricher := helper.NewRegexEnricher()
-	if err = regexEnricher.TryAdd(devops.DEPLOYMENT, op.ScopeConfig.DeploymentPattern); err != nil {
-		return nil, errors.BadInput.Wrap(err, "invalid value for `deploymentPattern`")
+	if op.ScopeConfig.DeploymentPattern != nil {
+		if err = regexEnricher.TryAdd(devops.DEPLOYMENT, *op.ScopeConfig.DeploymentPattern); err != nil {
+			return nil, errors.BadInput.Wrap(err, "invalid value for `deploymentPattern`")
+		}
 	}
-	if err = regexEnricher.TryAdd(devops.PRODUCTION, op.ScopeConfig.ProductionPattern); err != nil {
-		return nil, errors.BadInput.Wrap(err, "invalid value for `productionPattern`")
+	if op.ScopeConfig.ProductionPattern != nil {
+		if err = regexEnricher.TryAdd(devops.PRODUCTION, *op.ScopeConfig.ProductionPattern); err != nil {
+			return nil, errors.BadInput.Wrap(err, "invalid value for `productionPattern`")
+		}
 	}
-	if err = regexEnricher.TryAdd(devops.ENV_NAME_PATTERN, op.ScopeConfig.EnvNamePattern); err != nil {
-		return nil, errors.BadInput.Wrap(err, "invalid value for `envNamePattern`")
+	if len(op.ScopeConfig.EnvNameList) > 0 || (len(op.ScopeConfig.EnvNameList) == 0 && op.ScopeConfig.EnvNamePattern == "") {
+		if err = regexEnricher.TryAddList(devops.ENV_NAME_PATTERN, op.ScopeConfig.EnvNameList...); err != nil {
+			return nil, errors.BadInput.Wrap(err, "invalid value for `envNameList`")
+		}
+	} else {
+		if err = regexEnricher.TryAdd(devops.ENV_NAME_PATTERN, op.ScopeConfig.EnvNamePattern); err != nil {
+			return nil, errors.BadInput.Wrap(err, "invalid value for `envNamePattern`")
+		}
 	}
 	taskData.RegexEnricher = regexEnricher
 
@@ -178,6 +189,10 @@ func (p Github) RootPkgPath() string {
 
 func (p Github) MigrationScripts() []plugin.MigrationScript {
 	return migrationscripts.All()
+}
+
+func (p Github) TestConnection(id uint64) errors.Error {
+	return api.TestExistingConnectionForTokenCheck(helper.GenerateTestingConnectionApiResourceInput(id))
 }
 
 func (p Github) ApiResources() map[string]map[string]plugin.ApiResourceHandler {
@@ -218,6 +233,12 @@ func (p Github) ApiResources() map[string]map[string]plugin.ApiResourceHandler {
 			"GET":    api.GetScopeConfig,
 			"DELETE": api.DeleteScopeConfig,
 		},
+		"connections/:connectionId/deployments": {
+			"GET": api.GetConnectionDeployments,
+		},
+		"connections/:connectionId/transform-to-deployments": {
+			"POST": api.GetConnectionTransformToDeployments,
+		},
 		"connections/:connectionId/remote-scopes": {
 			"GET": api.RemoteScopes,
 		},
@@ -252,9 +273,41 @@ func (p Github) Close(taskCtx plugin.TaskContext) errors.Error {
 	return nil
 }
 
+func (p Github) GetDynamicGitUrl(taskCtx plugin.TaskContext, connectionId uint64, repoUrl string) (string, errors.Error) {
+	connectionHelper := helper.NewConnectionHelper(
+		taskCtx,
+		nil,
+		p.Name(),
+	)
+
+	connection := &models.GithubConnection{}
+	err := connectionHelper.FirstById(connection, connectionId)
+	if err != nil {
+		return "", errors.Default.Wrap(err, "unable to get github connection by the given connection ID")
+	}
+
+	apiClient, err := helper.NewApiClient(taskCtx.GetContext(), connection.GetEndpoint(), nil, 0, connection.GetProxy(), taskCtx)
+	if err != nil {
+		return "", err
+	}
+
+	err = connection.PrepareApiClient(apiClient)
+	if err != nil {
+		return "", err
+	}
+
+	newUrl, err := replaceAcessTokenInUrl(repoUrl, connection.Token)
+	if err != nil {
+		return "", err
+	}
+
+	return newUrl, nil
+}
+
 func EnrichOptions(taskCtx plugin.TaskContext,
 	op *tasks.GithubOptions,
-	apiClient *helper.ApiClient) errors.Error {
+	apiClient *helper.ApiClient,
+) errors.Error {
 	var githubRepo models.GithubRepo
 	// validate the op and set name=owner/repo if this is from advanced mode or bpV100
 	err := tasks.ValidateTaskOptions(op)
@@ -320,4 +373,25 @@ func convertApiRepoToScope(repo *tasks.GithubApiRepo, connectionId uint64) *mode
 	scope.FullName = repo.FullName
 	scope.CloneUrl = repo.CloneUrl
 	return &scope
+}
+
+func replaceAcessTokenInUrl(gitURL, newCredential string) (string, errors.Error) {
+	atIndex := strings.Index(gitURL, "@")
+	if atIndex == -1 {
+		return "", errors.Default.New("Invalid Git URL")
+	}
+
+	protocolIndex := strings.Index(gitURL, "://")
+	if protocolIndex == -1 {
+		return "", errors.Default.New("Invalid Git URL")
+	}
+
+	// Extract the base URL (e.g., "https://git:")
+	baseURL := gitURL[:protocolIndex+7]
+
+	repoURL := gitURL[atIndex+1:]
+
+	modifiedURL := fmt.Sprintf("%s%s@%s", baseURL, newCredential, repoURL)
+
+	return modifiedURL, nil
 }

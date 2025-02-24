@@ -22,7 +22,6 @@ import { Flex, Button, Tooltip } from 'antd';
 
 import API from '@/api';
 import { Markdown } from '@/components';
-import { PATHS } from '@/config';
 import { selectOnboard, previous, update } from '@/features/onboard';
 import { useAppDispatch, useAppSelector } from '@/hooks';
 import { getPluginConfig } from '@/plugins';
@@ -109,18 +108,24 @@ export const Step2 = () => {
     return null;
   }
 
+  const platformNames: Record<string, string> = {
+    github: 'GitHub',
+    gitlab: 'GitLab',
+    azuredevops: 'Azure DevOps',
+  }
+
   return (
     <>
       <S.StepContent>
-        {['github', 'gitlab', 'azuredevops'].includes(plugin) && (
+        {platformNames[plugin] && (
           <div className="content">
             <ConnectionToken
               type="create"
               label="Personal Access Token"
               subLabel={
                 <p>
-                  Create a personal access token in GitHub. For self-managed {config.name}, please skip the onboarding
-                  and configure via <Link to={PATHS.CONNECTIONS()}>Data Connections</Link>.
+                  Create a personal access token in {platformNames[plugin]}. For self-managed {config.name}, please skip the onboarding
+                  and configure via <Link to={'/connections'}>Data Connections</Link>.
                 </p>
               }
               initialValue=""

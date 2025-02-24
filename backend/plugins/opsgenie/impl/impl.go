@@ -123,15 +123,20 @@ func (p Opsgenie) PrepareTaskData(taskCtx plugin.TaskContext, options map[string
 		return nil, errors.Default.Wrap(err, "unable to get Opsgenie connection by the given connection ID")
 	}
 
-	client, err := helper.NewApiClientFromConnection(taskCtx.GetContext(), taskCtx, connection)
+	var asyncClient *helper.ApiAsyncClient
+	syncPolicy := taskCtx.SyncPolicy()
+	if !syncPolicy.SkipCollectors {
+		client, err := helper.NewApiClientFromConnection(taskCtx.GetContext(), taskCtx, connection)
+		if err != nil {
+			return nil, err
+		}
+		newAsyncClient, err := helper.CreateAsyncApiClient(taskCtx, client, nil)
+		if err != nil {
+			return nil, err
+		}
+		asyncClient = newAsyncClient
+	}
 
-	if err != nil {
-		return nil, err
-	}
-	asyncClient, err := helper.CreateAsyncApiClient(taskCtx, client, nil)
-	if err != nil {
-		return nil, err
-	}
 	return &tasks.OpsgenieTaskData{
 		Options: op,
 		Client:  asyncClient,
@@ -148,6 +153,11 @@ func (p Opsgenie) Close(taskCtx plugin.TaskContext) errors.Error {
 		return errors.Default.New(fmt.Sprintf("GetData failed when try to close %+v", taskCtx))
 	}
 	return nil
+}
+
+func (p Opsgenie) TestConnection(id uint64) errors.Error {
+	_, err := api.TestExistingConnection(helper.GenerateTestingConnectionApiResourceInput(id))
+	return err
 }
 
 func (p Opsgenie) ApiResources() map[string]map[string]plugin.ApiResourceHandler {
