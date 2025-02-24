@@ -73,36 +73,42 @@ func listAzuredevopsProjects(
 	err errors.Error) {
 	remotehelperLog.Info("Querying Azure DevOps for projects")
 	query := url.Values{}
-	//query.Set("$top", fmt.Sprint(page.Top))
-	//query.Set("$skip", fmt.Sprint(page.Skip))
-	//query.Set("api-version", "7.1")
+	query.Set("$top", fmt.Sprint(page.Top))
+	query.Set("$skip", fmt.Sprint(page.Skip))
+	query.Set("api-version", "7.1")
 
+	vsc := newVsClient(connection, "https://app.vssps.visualstudio.com")
+
+	profile, err := vsc.UserProfile()
+	if err != nil {
+		return nil, nil, err
+	}
+	accounts, err := vsc.UserAccounts(profile.Id)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var data struct {
 		Projects []dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsProject] `json:"value"`
 	}
 
-	
-	res, err := apiClient.Get("Main/_apis/projects", query, nil)
-	remotehelperLog.Info("response from api call %s", res)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = api.UnmarshalResponse(res, &data)
-	if err != nil {
+	for _, v := range accounts {
+		res, err := apiClient.Get(fmt.Sprintf("%s/_apis/projects", v.AccountName), query, nil)
+	    err = api.UnmarshalResponse(res, &data)
 		if err != nil {
-			return nil, nil, err
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	
+		for _, vv := range data.Projects {
+			children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo]{
+				Id:   v.AccountName+ idSeparator + vv.Name,
+				Type: api.RAS_ENTRY_TYPE_GROUP,
+				Name: vv.Name,
+			})
 		}
 	}
-
-	for _, vv := range data.Projects {
-		children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo]{
-			Id:   "Main"+ idSeparator + vv.Name,
-			Type: api.RAS_ENTRY_TYPE_GROUP,
-			Name: vv.Name,
-		})
-	}
-	
 
 	if len(data.Projects) >= itemsPerPage {
 		nextPage = &AzuredevopsRemotePagination{
@@ -122,7 +128,7 @@ func listAzuredevopsRepos(
 	err errors.Error) {
 	remotehelperLog.Info("Querying Azure DevOps for repos in org %s, project: %s", orgId, projectId)
 	query := url.Values{}
-	//query.Set("api-version", "7.1")
+	query.Set("api-version", "7.1")
 
 	var data struct {
 		Repos []AzuredevopsApiRepo `json:"value"`

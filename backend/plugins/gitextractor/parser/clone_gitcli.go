@@ -19,7 +19,6 @@ package parser
 
 import (
 	"bufio"
-	b64 "encoding/base64"
 	"fmt"
 	"net/url"
 	"os"
@@ -94,25 +93,14 @@ func (g *GitcliCloner) CloneRepo(ctx plugin.SubTaskContext, localDir string) err
 
 func (g *GitcliCloner) buildCloneCommand(ctx plugin.SubTaskContext, localDir string, since *time.Time) (*exec.Cmd, errors.Error) {
 	taskData := ctx.GetData().(*GitExtractorTaskData)
-	pat := strings.Split(taskData.Options.Url, ":")[2]
-	pat = strings.Split(pat, "@")[0]
-	g.logger.Info("pat: %s", pat)
-	sEnc := b64.StdEncoding.EncodeToString([]byte(":"+pat))
-
-	if strings.Contains(taskData.Options.Url, "Orbis%!C(MISSING)loud") {
-		strings.Replace(taskData.Options.Url, "Orbis%!C(MISSING)loud", "Orbis%20Cloud",1)
-	}
-
-	args := []string{"-c", "git -c http.extraHeader=\"Authorization: Basic "+sEnc+"\" clone "+ taskData.Options.Url+" "+localDir+" --bare --progress"}
+	args := []string{"clone", taskData.Options.Url, localDir, "--bare", "--progress"}
 	
 	env := []string{}
 	// support proxy
 	if taskData.ParsedURL.Scheme == "http" || taskData.ParsedURL.Scheme == "https" {
 		if taskData.Options.Proxy != "" {
 			env = append(env, fmt.Sprintf("HTTPS_PROXY=%s", taskData.Options.Proxy))
-		}
-		
-		
+		}				
 	} else if taskData.ParsedURL.Scheme == "ssh" {
 		var sshCmdArgs []string
 		if taskData.Options.Proxy != "" {
@@ -170,9 +158,9 @@ func (g *GitcliCloner) buildCloneCommand(ctx plugin.SubTaskContext, localDir str
 		args = append(args, "--filter=blob:none")
 	}
 	// fmt.Printf("args: %v\n", args)
-	g.logger.Debug("bash %v", args)
+	g.logger.Debug("git %v", args)
 	
-	cmd := exec.CommandContext(ctx.GetContext(), "bash", args...)
+	cmd := exec.CommandContext(ctx.GetContext(), "git", args...)
 	cmd.Env = env
 	return cmd, nil
 }

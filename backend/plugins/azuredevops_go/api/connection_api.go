@@ -52,7 +52,7 @@ func TestConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, 
 		},
 		AzuredevopsConn: conn,
 	}
-	vsc := newVsClient(&connection, "https://azd.orbis.app/tfs/Main/")
+	vsc := newVsClient(&connection, "https://app.vssps.visualstudio.com/")
 
 	_, err := vsc.UserProfile()
 	if err != nil {
@@ -80,7 +80,7 @@ func TestExistingConnection(input *plugin.ApiResourceInput) (*plugin.ApiResource
 		return nil, errors.BadInput.Wrap(err, "can't read connection from database")
 	}
 
-	vsc := newVsClient(connection, "https://azd.orbis.app/tfs/Main/")
+	vsc := newVsClient(connection, "https://app.vssps.visualstudio.com/")
 	_, err = vsc.UserProfile()
 	if err != nil {
 		return nil, err

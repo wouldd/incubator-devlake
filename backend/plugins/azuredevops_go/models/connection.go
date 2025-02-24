@@ -60,7 +60,7 @@ type AzuredevopsConn struct {
 }
 
 func (conn *AzuredevopsConn) GetEndpoint() string {
-	return "https://azd.orbis.app/tfs/"
+	return "https://dev.azure.com"
 }
 
 func (conn *AzuredevopsConn) GetProxy() string {
@@ -80,7 +80,7 @@ type AzuredevopsConnection struct {
 }
 
 func (c AzuredevopsConnection) GetEndpoint() string {
-	return "https://azd.orbis.app/tfs/"
+	return "https://dev.azure.com"
 }
 
 func (c AzuredevopsConnection) GetProxy() string {

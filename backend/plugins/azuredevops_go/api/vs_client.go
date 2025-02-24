@@ -80,7 +80,7 @@ func newVsClient(con *models.AzuredevopsConnection, url string) vsClient {
 
 func (vsc *vsClient) UserProfile() (Profile, errors.Error) {
 	var p Profile
-	endpoint, err := url.JoinPath(vsc.url, "_api/_common/GetUserProfile?__v=5")
+	endpoint, err := url.JoinPath(vsc.url, "/_apis/profile/profiles/me")
 	if err != nil {
 		return Profile{}, errors.Internal.Wrap(err, "failed to join user profile path")
 	}
@@ -101,12 +101,10 @@ func (vsc *vsClient) UserProfile() (Profile, errors.Error) {
 		return Profile{}, errors.Internal.Wrap(err, "failed to read response body")
 	}
 	vsclientLog.Info("Response from UserPRofile call %s", resBody)
-	p.DisplayName = "AZD User"
-	p.EmailAddress = "devops@orbis.com"
-	p.Id = "123456"
-	//if err := json.Unmarshal(resBody, &p); err != nil {
-		//panic(err)
-	//}
+	
+	if err := json.Unmarshal(resBody, &p); err != nil {
+		panic(err)
+	}
 	return p, nil
 }
 

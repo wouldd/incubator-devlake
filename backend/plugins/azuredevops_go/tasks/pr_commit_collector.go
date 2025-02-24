@@ -73,7 +73,7 @@ func CollectApiPullRequestCommits(taskCtx plugin.SubTaskContext) errors.Error {
 		PageSize:              100,
 		Input:                 iterator,
 		Incremental:           false,
-		UrlTemplate:           "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/git/repositories/{{ .Params.RepositoryId }}/pullRequests/{{ .Input.AzuredevopsId }}/commits?api-version=7.0",
+		UrlTemplate:           "{{ .Params.OrganizationId }}/{{ .Params.ProjectId }}/_apis/git/repositories/{{ .Params.RepositoryId }}/pullRequests/{{ .Input.AzuredevopsId }}/commits?api-version=7.1",
 		Query:                 BuildPaginator(true),
 		ResponseParser:        ParseRawMessageFromValue,
 		GetNextPageCustomData: ExtractContToken,
