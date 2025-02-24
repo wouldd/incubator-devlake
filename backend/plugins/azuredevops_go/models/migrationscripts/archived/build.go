@@ -26,7 +26,7 @@ type AzuredevopsBuild struct {
 	archived.NoPKModel
 
 	ConnectionId  uint64 `gorm:"primaryKey"`
-	AzuredevopsId int    `gorm:"primaryKey"`
+	AzuredevopsId uint64 `gorm:"primaryKey"`
 	RepositoryId  string `gorm:"type:varchar(255)"`
 	Name          string `gorm:"type:varchar(100)"`
 	Status        string `gorm:"type:varchar(255)"`

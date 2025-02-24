@@ -47,7 +47,7 @@ var CollectApiPullRequestCommitsMeta = plugin.SubTaskMeta{
 }
 
 type SimplePr struct {
-	AzuredevopsId int
+	AzuredevopsId uint64
 }
 
 func CollectApiPullRequestCommits(taskCtx plugin.SubTaskContext) errors.Error {

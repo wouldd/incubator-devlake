@@ -25,7 +25,7 @@ type AzuredevopsPrLabel struct {
 	common.NoPKModel
 
 	ConnectionId  uint64 `gorm:"primaryKey"`
-	PullRequestId int    `gorm:"primaryKey"`
+	PullRequestId uint64 `gorm:"primaryKey"`
 	LabelName     string `gorm:"primaryKey"`
 }
 

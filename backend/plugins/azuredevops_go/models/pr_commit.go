@@ -27,7 +27,7 @@ type AzuredevopsPrCommit struct {
 
 	CommitSha     string `gorm:"primaryKey"`
 	ConnectionId  uint64 `gorm:"primaryKey"`
-	PullRequestId int    `gorm:"primaryKey"`
+	PullRequestId uint64 `gorm:"primaryKey"`
 	AuthorDate    *time.Time
 	AuthorName    string
 	AuthorEmail   string

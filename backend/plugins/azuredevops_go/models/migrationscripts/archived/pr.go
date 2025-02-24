@@ -26,7 +26,7 @@ type AzuredevopsPullRequest struct {
 	archived.NoPKModel
 
 	ConnectionId    uint64 `gorm:"primaryKey"`
-	AzuredevopsId   int    `gorm:"primaryKey"`
+	AzuredevopsId   uint64 `gorm:"primaryKey"`
 	RepositoryId    string
 	CreationDate    *time.Time
 	MergeCommitSha  string `gorm:"type:varchar(255)"`

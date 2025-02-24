@@ -26,7 +26,7 @@ type AzuredevopsPullRequest struct {
 	common.NoPKModel
 
 	ConnectionId    uint64 `gorm:"primaryKey"`
-	AzuredevopsId   int    `gorm:"primaryKey"`
+	AzuredevopsId   uint64 `gorm:"primaryKey"`
 	RepositoryId    string
 	CreationDate    *time.Time
 	MergeCommitSha  string
@@ -67,7 +67,7 @@ type AzuredevopsApiPullRequest struct {
 			LastUpdateTime string `json:"lastUpdateTime"`
 		} `json:"project"`
 	} `json:"repository"`
-	PullRequestId int    `json:"pullRequestId"`
+	PullRequestId uint64    `json:"pullRequestId"`
 	CodeReviewId  int    `json:"codeReviewId"`
 	Status        string `json:"status"`
 	CreatedBy     struct {

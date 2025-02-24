@@ -26,7 +26,7 @@ type AzuredevopsBuild struct {
 	common.NoPKModel
 
 	ConnectionId  uint64 `gorm:"primaryKey"`
-	AzuredevopsId int    `json:"id" gorm:"primaryKey"`
+	AzuredevopsId uint64 `json:"id" gorm:"primaryKey"`
 	RepositoryId  string
 	Status        string
 	Result        string
@@ -46,7 +46,7 @@ func (AzuredevopsBuild) TableName() string {
 }
 
 type AzuredevopsApiBuild struct {
-	Id          int       `json:"id"`
+	Id          uint64    `json:"id"`
 	BuildNumber string    `json:"buildNumber"`
 	Status      string    `json:"status"`
 	Result      string    `json:"result"`

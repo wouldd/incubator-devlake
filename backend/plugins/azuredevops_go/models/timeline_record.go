@@ -27,7 +27,7 @@ type AzuredevopsTimelineRecord struct {
 
 	ConnectionId uint64 `gorm:"primaryKey"`
 	RecordId     string `gorm:"primaryKey"`
-	BuildId      int    `gorm:"primaryKey"`
+	BuildId      uint64 `gorm:"primaryKey"`
 	ParentId     string
 	Type         string
 	Name         string
@@ -35,7 +35,7 @@ type AzuredevopsTimelineRecord struct {
 	FinishTime   *time.Time
 	State        string
 	Result       string
-	ChangeId     int
+	ChangeId     uint64
 	LastModified string
 }
 
@@ -53,7 +53,7 @@ type AzuredevopsApiTimelineRecord struct {
 	State        string     `json:"state"`
 	Result       string     `json:"result"`
 	ResultCode   string     `json:"resultCode"`
-	ChangeId     int        `json:"changeId"`
+	ChangeId     uint64     `json:"changeId"`
 	LastModified string     `json:"lastModified"`
 	Identifier   string     `json:"identifier"`
 }

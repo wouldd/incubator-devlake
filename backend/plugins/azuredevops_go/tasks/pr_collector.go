@@ -44,7 +44,7 @@ var CollectApiPullRequestsMeta = plugin.SubTaskMeta{
 }
 
 func CollectApiPullRequests(taskCtx plugin.SubTaskContext) errors.Error {
-	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawCommitTable,PR_PRIMARY_KEY_PATH)
+	rawDataSubTaskArgs, data := CreateRawDataSubTaskArgs(taskCtx, RawPullRequestTable,PR_PRIMARY_KEY_PATH)
 	apiCollector, err := api.NewStatefulApiCollector(*rawDataSubTaskArgs)
 	if err != nil {
 		return err
