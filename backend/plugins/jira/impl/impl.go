@@ -103,6 +103,9 @@ func (p Jira) Name() string {
 
 func (p Jira) SubTaskMetas() []plugin.SubTaskMeta {
 	return []plugin.SubTaskMeta{
+		tasks.CollectIssueFieldsMeta,
+		tasks.ExtractIssueFieldsMeta,
+
 		tasks.CollectBoardFilterBeginMeta,
 
 		tasks.CollectStatusMeta,
@@ -150,8 +153,8 @@ func (p Jira) SubTaskMetas() []plugin.SubTaskMeta {
 		tasks.ConvertSprintsMeta,
 		tasks.ConvertSprintIssuesMeta,
 
-		//tasks.CollectDevelopmentPanelMeta,
-		//tasks.ExtractDevelopmentPanelMeta,
+		tasks.CollectDevelopmentPanelMeta,
+		tasks.ExtractDevelopmentPanelMeta,
 
 		tasks.ConvertIssueCommitsMeta,
 		tasks.ConvertIssueRepoCommitsMeta,
