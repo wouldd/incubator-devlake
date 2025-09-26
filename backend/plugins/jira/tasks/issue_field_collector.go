@@ -26,6 +26,7 @@ import (
 )
 
 const RAW_ISSUE_FIELDS_TABLE = "jira_api_issue_fields"
+const ISSUE_FILEDS_PRIMARY_KEY_PATH = "id"
 
 var _ plugin.SubTaskEntryPoint = CollectIssueField
 
@@ -49,6 +50,7 @@ func CollectIssueField(taskCtx plugin.SubTaskContext) errors.Error {
 				BoardId:      data.Options.BoardId,
 			},
 			Table: RAW_ISSUE_FIELDS_TABLE,
+			PrimaryKeyExtractor: ISSUE_FILEDS_PRIMARY_KEY_PATH,
 		},
 		ApiClient:   data.ApiClient,
 		PageSize:    0,

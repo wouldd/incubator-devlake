@@ -62,8 +62,12 @@ type JiraIssue struct {
 	LeadTimeMinutes          *uint
 	StdType                  string `gorm:"type:varchar(255)"`
 	StdStatus                string `gorm:"type:varchar(255)"`
-	Components               string `gorm:"type:varchar(255)"`
+	Components               string `gorm:"type:text"`
+	Subtask                  bool
 	ChangelogTotal           int
+	WorklogTotal             int
+	DueDate                  *time.Time
+	FixVersions              string `gorm:"type:text;column:fix_versions"`
 	common.NoPKModel
 }
 
