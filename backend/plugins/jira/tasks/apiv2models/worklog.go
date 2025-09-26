@@ -28,7 +28,7 @@ type Worklog struct {
 	Self             string             `json:"self"`
 	Author           *Account           `json:"author"`
 	UpdateAuthor     *Account           `json:"updateAuthor"`
-	Comment          string             `json:"comment"`
+	Comment          FlexibleDescription`json:"comment"`
 	Created          string             `json:"created"`
 	Updated          common.Iso8601Time `json:"updated"`
 	Started          common.Iso8601Time `json:"started"`

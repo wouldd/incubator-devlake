@@ -105,7 +105,7 @@ func listAzuredevopsProjects(
 			children = append(children, dsmodels.DsRemoteApiScopeListEntry[models.AzuredevopsRepo]{
 				Id:   v.AccountName+ idSeparator + vv.Name,
 				Type: api.RAS_ENTRY_TYPE_GROUP,
-				Name: vv.Name,
+				Name: v.AccountName+ idSeparator + vv.Name,
 			})
 		}
 	}

@@ -26,7 +26,7 @@ func init() {
 }
 
 const rawUserTable = "azuredevops_go_api_users"
-const USER_PRIMARY_KEY_PATH = "id"
+const USER_PRIMARY_KEY_PATH = "originId"
 
 var CollectAccountsMeta = plugin.SubTaskMeta{
 	Name:             "collectAccounts",

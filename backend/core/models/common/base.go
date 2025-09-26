@@ -30,6 +30,7 @@ const (
 type User struct {
 	Name  string
 	Email string
+	Location string
 }
 
 type Model struct {
