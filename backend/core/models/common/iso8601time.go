@@ -72,6 +72,10 @@ func init() {
 			Matcher: regexp.MustCompile(`[+-][\d]{2}-[\d]{2}$`),
 			Format:  "2006-01-02",
 		},
+		{
+			Matcher: regexp.MustCompile(`[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}$`),
+			Format:  "2006-01-02 15:04",
+		},
 	}
 }
 
@@ -107,12 +111,48 @@ func (jt *Iso8601Time) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 	timeString = strings.Trim(timeString, `"`)
+
+	// Handle special cases for non-standard date representations
+	// Some systems may use text like "长期" (long-term) instead of actual dates
+	if isNonDateString(timeString) {
+		jt.Time = time.Time{}
+		return nil
+	}
+
 	t, err := ConvertStringToTime(timeString)
 	if err != nil {
 		return err
 	}
 	jt.Time = t
 	return nil
+}
+
+// isNonDateString checks if a string represents a non-date value like "long-term"
+func isNonDateString(s string) bool {
+	// Handle various representations of "long-term" in different systems
+	nonDateStrings := []string{
+		"长期",                 // Chinese for "long-term"
+		"\\u957f\\u671f",     // Unicode escape sequence for "长期"
+		"\\\\u957f\\\\u671f", // Double-escaped Unicode sequence
+		"long-term",          // English
+		"永久",                 // Chinese for "permanent"
+		"indefinite",         // English
+		"unlimited",          // English
+	}
+
+	for _, nonDate := range nonDateStrings {
+		if s == nonDate {
+			return true
+		}
+	}
+
+	// Also check if the string contains the Unicode escape pattern for "长期"
+	// This handles cases where escape sequences might be processed differently
+	if strings.Contains(s, "957f") && strings.Contains(s, "671f") {
+		return true
+	}
+
+	return false
 }
 
 // ToTime FIXME ...
@@ -136,6 +176,16 @@ func ConvertStringToTime(timeString string) (t time.Time, err error) {
 		}
 	}
 	return time.Parse(time.RFC3339, timeString)
+}
+
+// ConvertStringToTimeInLoc converts a string to time.Time in the given location.
+func ConvertStringToTimeInLoc(timeString string, loc *time.Location) (t time.Time, err error) {
+	for _, formatItem := range DateTimeFormats {
+		if formatItem.Matcher.MatchString(timeString) {
+			return time.ParseInLocation(formatItem.Format, timeString, loc)
+		}
+	}
+	return time.ParseInLocation(time.RFC3339, timeString, loc)
 }
 
 // Iso8601TimeToTime FIXME ...

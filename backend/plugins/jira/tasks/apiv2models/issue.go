@@ -19,13 +19,15 @@ package apiv2models
 
 import (
 	"encoding/json"
-	"time"
 	"strings"
+	"time"
+
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/models/common"
 	"github.com/apache/incubator-devlake/plugins/jira/models"
 )
 
+// FlexibleDescription supports both plain text and ADF (Atlassian Document Format) for Jira description field
 // ADF reference: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
 type FlexibleDescription struct {
 	Value string
@@ -189,7 +191,11 @@ type Issue struct {
 				Three2X32 string `json:"32x32"`
 			} `json:"avatarUrls"`
 		} `json:"project"`
-		FixVersions        []interface{}       `json:"fixVersions"`
+		FixVersions []struct {
+			Self string `json:"self"`
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"fixVersions"`
 		Aggregatetimespent interface{}         `json:"aggregatetimespent"`
 		Resolution         interface{}         `json:"resolution"`
 		Resolutiondate     *common.Iso8601Time `json:"resolutiondate"`
@@ -244,7 +250,7 @@ type Issue struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
 		} `json:"components"`
-		Timeoriginalestimate *int64 `json:"timeoriginalestimate"`
+		Timeoriginalestimate *int64              `json:"timeoriginalestimate"`
 		Description          FlexibleDescription `json:"description"`
 		Timetracking         *struct {
 			RemainingEstimate        string `json:"remainingEstimate"`
@@ -263,7 +269,7 @@ type Issue struct {
 			Total    int `json:"total"`
 		} `json:"aggregateprogress"`
 		Environment interface{} `json:"environment"`
-		Duedate     interface{} `json:"duedate"`
+		Duedate     string      `json:"duedate"` // yyyy-MM-dd
 		Progress    struct {
 			Progress int `json:"progress"`
 			Total    int `json:"total"`
@@ -369,6 +375,9 @@ func (i Issue) toToolLayer(connectionId uint64) *models.JiraIssue {
 	if i.Changelog != nil {
 		result.ChangelogTotal = i.Changelog.Total
 	}
+	if i.Fields.Worklog != nil {
+		result.WorklogTotal = i.Fields.Worklog.Total
+	}
 	if i.Fields.Epic != nil {
 		result.EpicKey = i.Fields.Epic.Key
 	}
@@ -424,7 +433,7 @@ func (i *Issue) SetAllFields(raw json.RawMessage) errors.Error {
 	return nil
 }
 
-func (i Issue) ExtractEntities(connectionId uint64) ([]uint64, *models.JiraIssue, []*models.JiraIssueComment, []*models.JiraWorklog, []*models.JiraIssueChangelogs, []*models.JiraIssueChangelogItems, []*models.JiraAccount) {
+func (i Issue) ExtractEntities(connectionId uint64, userFieldMaps map[string]struct{}) ([]uint64, *models.JiraIssue, []*models.JiraIssueComment, []*models.JiraWorklog, []*models.JiraIssueChangelogs, []*models.JiraIssueChangelogItems, []*models.JiraAccount) {
 	issue := i.toToolLayer(connectionId)
 	var comments []*models.JiraIssueComment
 	var worklogs []*models.JiraWorklog
@@ -465,7 +474,7 @@ func (i Issue) ExtractEntities(connectionId uint64) ([]uint64, *models.JiraIssue
 			}
 			for _, item := range changelog.Items {
 				changelogItems = append(changelogItems, item.ToToolLayer(connectionId, changelog.ID))
-				users = append(users, item.ExtractUser(connectionId)...)
+				users = append(users, item.ExtractUser(connectionId, userFieldMaps)...)
 			}
 		}
 	}

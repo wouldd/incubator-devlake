@@ -68,16 +68,16 @@ func (c ChangelogItem) ToToolLayer(connectionId, changelogId uint64) *models.Jir
 	return item
 }
 
-func (c ChangelogItem) ExtractUser(connectionId uint64) []*models.JiraAccount {
-	if c.Field != "assignee" {
-		return nil
-	}
+func (c ChangelogItem) ExtractUser(connectionId uint64, userFieldMaps map[string]struct{}) []*models.JiraAccount {
 	var result []*models.JiraAccount
-	if c.FromValue != "" {
-		result = append(result, &models.JiraAccount{ConnectionId: connectionId, AccountId: c.FromValue})
-	}
-	if c.ToValue != "" {
-		result = append(result, &models.JiraAccount{ConnectionId: connectionId, AccountId: c.ToValue})
+	_, ok := userFieldMaps[c.Field]
+	if c.Field == "assignee" || c.Field == "reporter" || ok {
+		if c.FromValue != "" {
+			result = append(result, &models.JiraAccount{ConnectionId: connectionId, AccountId: c.FromValue})
+		}
+		if c.ToValue != "" {
+			result = append(result, &models.JiraAccount{ConnectionId: connectionId, AccountId: c.ToValue})
+		}
 	}
 	return result
 }

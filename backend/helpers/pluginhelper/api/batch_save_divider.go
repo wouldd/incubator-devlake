@@ -38,6 +38,7 @@ type BatchSaveDivider struct {
 	batchSize int
 	table     string
 	params    string
+	incrementalMode bool
 }
 
 // NewBatchSaveDivider create a new BatchInsertDivider instance
@@ -53,6 +54,11 @@ func NewBatchSaveDivider(basicRes context.BasicRes, batchSize int, table string,
 		params:    params,
 	}
 }
+
+func (d *BatchSaveDivider) SetIncrementalMode(incrementalMode bool) {
+	d.incrementalMode = incrementalMode
+}
+
 
 // ForType returns a `BatchSave` instance for specific type
 func (d *BatchSaveDivider) ForType(rowType reflect.Type) (*BatchSave, errors.Error) {

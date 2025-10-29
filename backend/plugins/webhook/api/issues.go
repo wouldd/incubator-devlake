@@ -19,6 +19,8 @@ package api
 
 import (
 	"fmt"
+	"github.com/apache/incubator-devlake/core/log"
+	"github.com/apache/incubator-devlake/helpers/dbhelper"
 	"net/http"
 	"time"
 
@@ -35,31 +37,49 @@ import (
 
 type WebhookIssueRequest struct {
 	Url                     string     `mapstructure:"url"`
-	IssueKey                string     `mapstructure:"issue_key" validate:"required"`
+	IssueKey                string     `mapstructure:"issueKey" validate:"required"`
 	Title                   string     `mapstructure:"title" validate:"required"`
 	Description             string     `mapstructure:"description"`
-	EpicKey                 string     `mapstructure:"epic_key"`
+	EpicKey                 string     `mapstructure:"epicKey"`
 	Type                    string     `mapstructure:"type"`
 	Status                  string     `mapstructure:"status" validate:"oneof=TODO DONE IN_PROGRESS"`
-	OriginalStatus          string     `mapstructure:"original_status" validate:"required"`
-	StoryPoint              float64    `mapstructure:"story_point"`
-	ResolutionDate          *time.Time `mapstructure:"resolution_date"`
-	CreatedDate             *time.Time `mapstructure:"created_date" validate:"required"`
-	UpdatedDate             *time.Time `mapstructure:"updated_date"`
-	LeadTimeMinutes         uint       `mapstructure:"lead_time_minutes"`
-	ParentIssueKey          string     `mapstructure:"parent_issue_key"`
+	OriginalStatus          string     `mapstructure:"originalStatus" validate:"required"`
+	StoryPoint              float64    `mapstructure:"storyPoint"`
+	ResolutionDate          *time.Time `mapstructure:"resolutionDate"`
+	CreatedDate             *time.Time `mapstructure:"createdDate" validate:"required"`
+	UpdatedDate             *time.Time `mapstructure:"updatedDate"`
+	LeadTimeMinutes         uint       `mapstructure:"leadTimeMinutes"`
+	ParentIssueKey          string     `mapstructure:"parentIssueKey"`
 	Priority                string     `mapstructure:"priority"`
-	OriginalEstimateMinutes int64      `mapstructure:"original_estimate_minutes"`
-	TimeSpentMinutes        int64      `mapstructure:"time_spent_minutes"`
-	TimeRemainingMinutes    int64      `mapstructure:"time_remaining_minutes"`
-	CreatorId               string     `mapstructure:"creator_id"`
-	CreatorName             string     `mapstructure:"creator_name"`
-	AssigneeId              string     `mapstructure:"assignee_id"`
-	AssigneeName            string     `mapstructure:"assignee_name"`
+	OriginalEstimateMinutes int64      `mapstructure:"originalEstimateMinutes"`
+	TimeSpentMinutes        int64      `mapstructure:"timeSpentMinutes"`
+	TimeRemainingMinutes    int64      `mapstructure:"timeRemainingMinutes"`
+	CreatorId               string     `mapstructure:"creatorId"`
+	CreatorName             string     `mapstructure:"creatorName"`
+	AssigneeId              string     `mapstructure:"assigneeId"`
+	AssigneeName            string     `mapstructure:"assigneeName"`
 	Severity                string     `mapstructure:"severity"`
 	Component               string     `mapstructure:"component"`
 	//IconURL               string
 	//DeploymentId          string
+}
+
+func saveIncidentRelatedRecordsFromIssue(db dal.Transaction, logger log.Logger, issueBoarId string, issue *ticket.Issue) error {
+	incident, err := issue.ToIncident(issueBoarId)
+	if err != nil {
+		return err
+	}
+	if err := db.CreateOrUpdate(incident); err != nil {
+		return err
+	}
+	assignee, err := issue.ToIncidentAssignee()
+	if err != nil {
+		return err
+	}
+	if err := db.CreateOrUpdate(assignee); err != nil {
+		return err
+	}
+	return nil
 }
 
 // PostIssue
@@ -74,6 +94,25 @@ type WebhookIssueRequest struct {
 func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	connection := &models.WebhookConnection{}
 	err := connectionHelper.First(connection, input.Params)
+	return postIssue(input, err, connection)
+}
+
+// PostIssueByName
+// @Summary receive a record as defined and save it
+// @Description receive a record as follow and save it, example: {"url":"","issue_key":"DLK-1234","title":"a feature from DLK","description":"","epic_key":"","type":"BUG","status":"TODO","original_status":"created","story_point":0,"resolution_date":null,"created_date":"2020-01-01T12:00:00+00:00","updated_date":null,"lead_time_minutes":0,"parent_issue_key":"DLK-1200","priority":"","original_estimate_minutes":0,"time_spent_minutes":0,"time_remaining_minutes":0,"creator_id":"user1131","creator_name":"Nick name 1","assignee_id":"user1132","assignee_name":"Nick name 2","severity":"","component":""}
+// @Tags plugins/webhook
+// @Param body body WebhookIssueRequest true "json body"
+// @Success 200  {string} noResponse ""
+// @Failure 400  {string} errcode.Error "Bad Request"
+// @Failure 500  {string} errcode.Error "Internal Error"
+// @Router /plugins/webhook/by-name/:connectionName/issues [POST]
+func PostIssueByName(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	connection := &models.WebhookConnection{}
+	err := connectionHelper.FirstByName(connection, input.Params)
+	return postIssue(input, err, connection)
+}
+
+func postIssue(input *plugin.ApiResourceInput, err errors.Error, connection *models.WebhookConnection) (*plugin.ApiResourceOutput, errors.Error) {
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +128,9 @@ func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, error
 	if err != nil {
 		return &plugin.ApiResourceOutput{Body: err.Error(), Status: http.StatusBadRequest}, nil
 	}
-	db := basicRes.GetDal()
+	txHelper := dbhelper.NewTxHelper(basicRes, &err)
+	defer txHelper.End()
+	tx := txHelper.Begin()
 	domainIssue := &ticket.Issue{
 		DomainEntity: domainlayer.DomainEntity{
 			Id: fmt.Sprintf("%s:%d:%s", "webhook", connection.ID, request.IssueKey),
@@ -116,6 +157,13 @@ func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, error
 		Severity:                request.Severity,
 		Component:               request.Component,
 	}
+	if *domainIssue.LeadTimeMinutes == 0 {
+		if domainIssue.ResolutionDate != nil && domainIssue.CreatedDate != nil {
+			temp := uint(domainIssue.ResolutionDate.Sub(*domainIssue.CreatedDate).Minutes())
+			domainIssue.LeadTimeMinutes = &temp
+		}
+	}
+	// FIXME we have no idea about how to calculate domainIssue.TimeRemainingMinutes and domainIssue.TimeSpentMinutes.
 	if request.CreatorId != "" {
 		domainIssue.CreatorId = fmt.Sprintf("%s:%d:%s", "webhook", connection.ID, request.CreatorId)
 	}
@@ -134,7 +182,7 @@ func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, error
 	}
 
 	// check if board exists
-	count, err := db.Count(dal.From(&ticket.Board{}), dal.Where("id = ?", domainBoardId))
+	count, err := tx.Count(dal.From(&ticket.Board{}), dal.Where("id = ?", domainBoardId))
 	if err != nil {
 		return nil, err
 	}
@@ -146,21 +194,27 @@ func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, error
 				Id: domainBoardId,
 			},
 		}
-		err = db.Create(domainBoard)
+		err = tx.Create(domainBoard)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// save
-	err = db.CreateOrUpdate(domainIssue)
+	err = tx.CreateOrUpdate(domainIssue)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.CreateOrUpdate(boardIssue)
+	err = tx.CreateOrUpdate(boardIssue)
 	if err != nil {
 		return nil, err
+	}
+	if domainIssue.IsIncident() {
+		if err := saveIncidentRelatedRecordsFromIssue(tx, logger, domainBoardId, domainIssue); err != nil {
+			logger.Error(err, "failed to save incident related records")
+			return nil, errors.Convert(err)
+		}
 	}
 
 	return &plugin.ApiResourceOutput{Body: nil, Status: http.StatusOK}, nil
@@ -177,23 +231,62 @@ func PostIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, error
 func CloseIssue(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
 	connection := &models.WebhookConnection{}
 	err := connectionHelper.First(connection, input.Params)
+	return closeIssue(input, err, connection)
+}
+
+// CloseIssueByName
+// @Summary set issue's status to DONE
+// @Description set issue's status to DONE
+// @Tags plugins/webhook
+// @Success 200  {string} noResponse ""
+// @Failure 400  {string} errcode.Error "Bad Request"
+// @Failure 500  {string} errcode.Error "Internal Error"
+// @Router /plugins/webhook/by-name/:connectionName/issue/:issueKey/close [POST]
+func CloseIssueByName(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	connection := &models.WebhookConnection{}
+	err := connectionHelper.FirstByName(connection, input.Params)
+	return closeIssue(input, err, connection)
+}
+
+func closeIssue(input *plugin.ApiResourceInput, err errors.Error, connection *models.WebhookConnection) (*plugin.ApiResourceOutput, errors.Error) {
 	if err != nil {
 		return nil, err
 	}
 
-	db := basicRes.GetDal()
+	txHelper := dbhelper.NewTxHelper(basicRes, &err)
+	defer txHelper.End()
+	tx := txHelper.Begin()
+
+	issueId := fmt.Sprintf("%s:%d:%s", "webhook", connection.ID, input.Params[`issueKey`])
 	domainIssue := &ticket.Issue{}
-	err = db.First(domainIssue, dal.Where("id = ?", fmt.Sprintf("%s:%d:%s", "webhook", connection.ID, input.Params[`issueKey`])))
+	err = tx.First(domainIssue, dal.Where("id = ?", issueId))
 	if err != nil {
 		return nil, errors.NotFound.Wrap(err, `issue not found`)
 	}
 	domainIssue.Status = ticket.DONE
 	domainIssue.OriginalStatus = ``
-
 	// save
-	err = db.Update(domainIssue)
+	err = tx.Update(domainIssue)
 	if err != nil {
 		return nil, err
 	}
+
+	if domainIssue.IsIncident() {
+		domainIncident := &ticket.Incident{}
+		incidentId := issueId
+		err = tx.First(domainIncident, dal.Where("id = ?", incidentId))
+		if err == nil {
+			domainIncident.Status = ticket.DONE
+			domainIncident.OriginalStatus = ``
+			// save
+			err = tx.Update(domainIncident)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			logger.Warn(err, "failed to find incident")
+		}
+	}
+
 	return &plugin.ApiResourceOutput{Body: nil, Status: http.StatusOK}, nil
 }

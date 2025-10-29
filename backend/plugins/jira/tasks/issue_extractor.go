@@ -17,8 +17,8 @@ limitations under the License.
 
 package tasks
 
+
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -27,9 +27,11 @@ import (
 	"github.com/apache/incubator-devlake/core/errors"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
+	"github.com/apache/incubator-devlake/helpers/utils"
 	"github.com/apache/incubator-devlake/plugins/jira/models"
 	"github.com/apache/incubator-devlake/plugins/jira/tasks/apiv2models"
 )
+
 
 var _ plugin.SubTaskEntryPoint = ExtractIssues
 
@@ -42,41 +44,62 @@ var ExtractIssuesMeta = plugin.SubTaskMeta{
 }
 
 type typeMappings struct {
-	typeIdMappings         map[string]string
-	stdTypeMappings        map[string]string
-	standardStatusMappings map[string]models.StatusMappings
+	TypeIdMappings         map[string]string
+	StdTypeMappings        map[string]string
+	StandardStatusMappings map[string]models.StatusMappings
 }
 
-func ExtractIssues(taskCtx plugin.SubTaskContext) errors.Error {
-	data := taskCtx.GetData().(*JiraTaskData)
-	db := taskCtx.GetDal()
+func ExtractIssues(subtaskCtx plugin.SubTaskContext) errors.Error {
+	data := subtaskCtx.GetData().(*JiraTaskData)
+	db := subtaskCtx.GetDal()
 	connectionId := data.Options.ConnectionId
 	boardId := data.Options.BoardId
-	logger := taskCtx.GetLogger()
+	logger := subtaskCtx.GetLogger()
 	logger.Info("extract Issues, connection_id=%d, board_id=%d", connectionId, boardId)
 	mappings, err := getTypeMappings(data, db)
 	if err != nil {
 		return err
 	}
-	extractor, err := api.NewApiExtractor(api.ApiExtractorArgs{
-		RawDataSubTaskArgs: api.RawDataSubTaskArgs{
-			Ctx: taskCtx,
-			/*
-				This struct will be JSONEncoded and stored into database along with raw data itself, to identity minimal
-				set of data to be process, for example, we process JiraIssues by Board
-			*/
+	userFieldMap, err := getUserFieldMap(db, connectionId, logger)
+	if err != nil {
+		return err
+	}
+	extractor, err := api.NewStatefulApiExtractor(&api.StatefulApiExtractorArgs[apiv2models.Issue]{
+		SubtaskCommonArgs: &api.SubtaskCommonArgs{
+			SubTaskContext: subtaskCtx,
+			Table:          RAW_ISSUE_TABLE,
+			PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
 			Params: JiraApiParams{
 				ConnectionId: data.Options.ConnectionId,
 				BoardId:      data.Options.BoardId,
 			},
-			/*
-				Table store raw data
-			*/
-			Table: RAW_ISSUE_TABLE,
-			PrimaryKeyExtractor:ISSUE_PRIMARY_KEY_PATH,
+			SubtaskConfig: map[string]any{
+				"typeMappings":    mappings,
+				"storyPointField": data.Options.ScopeConfig.StoryPointField,
+				"dueDateField":    data.Options.ScopeConfig.DueDateField,
+			},
 		},
-		Extract: func(row *api.RawData) ([]interface{}, errors.Error) {
-			return extractIssues(data, mappings, row, taskCtx)
+		BeforeExtract: func(apiIssue *apiv2models.Issue, stateManager *api.SubtaskStateManager) errors.Error {
+			if stateManager.IsIncremental() {
+				err := db.Delete(
+					&models.JiraIssueLabel{},
+					dal.Where("connection_id = ? AND issue_id = ?", data.Options.ConnectionId, apiIssue.ID),
+				)
+				if err != nil {
+					return err
+				}
+				err = db.Delete(
+					&models.JiraIssueRelationship{},
+					dal.Where("connection_id = ? AND issue_id = ?", data.Options.ConnectionId, apiIssue.ID),
+				)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Extract: func(apiIssue *apiv2models.Issue, row *api.RawData) ([]interface{}, errors.Error) {
+			return extractIssues(data, mappings, apiIssue, row, userFieldMap)
 		},
 	})
 	if err != nil {
@@ -85,15 +108,8 @@ func ExtractIssues(taskCtx plugin.SubTaskContext) errors.Error {
 	return extractor.Execute()
 }
 
-func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,taskCtx plugin.SubTaskContext) ([]interface{}, errors.Error) {
-	logger := taskCtx.GetLogger()
-	logger.Info("extractIssues called with %v", row)
-	var apiIssue apiv2models.Issue
-	err := errors.Convert(json.Unmarshal(row.Data, &apiIssue))
-	if err != nil {
-		return nil, err
-	}
-	err = apiIssue.SetAllFields(row.Data)
+func extractIssues(data *JiraTaskData, mappings *typeMappings, apiIssue *apiv2models.Issue, row *api.RawData, userFieldMaps map[string]struct{}) ([]interface{}, errors.Error) {
+	err := apiIssue.SetAllFields(row.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +118,7 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 	if apiIssue.Fields.Created == nil {
 		return results, nil
 	}
-	sprints, issue, comments, worklogs, changelogs, changelogItems, users := apiIssue.ExtractEntities(data.Options.ConnectionId)
+	sprints, issue, comments, worklogs, changelogs, changelogItems, users := apiIssue.ExtractEntities(data.Options.ConnectionId, userFieldMaps)
 	for _, sprintId := range sprints {
 		sprintIssue := &models.JiraSprintIssue{
 			ConnectionId:     data.Options.ConnectionId,
@@ -111,7 +127,6 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 			IssueCreatedDate: &issue.Created,
 			ResolutionDate:   issue.ResolutionDate,
 		}
-		logger.Debug("appending sprint issue %v for sprint %v", issue.IssueId, sprintId)
 		results = append(results, sprintIssue)
 	}
 	if issue.ResolutionDate != nil {
@@ -133,19 +148,25 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 		}
 
 	}
-
+	// default due date field is "duedate"
+	dueDateField := "duedate"
+	if data.Options.ScopeConfig != nil && data.Options.ScopeConfig.DueDateField != "" {
+		dueDateField = data.Options.ScopeConfig.DueDateField
+	}
+	// using location of issues.Created
+	loc := issue.Created.Location()
+	issue.DueDate, _ = utils.GetTimeFieldFromMap(apiIssue.Fields.AllFields, dueDateField, loc)
 	// code in next line will set issue.Type to issueType.Name
-	issue.Type = mappings.typeIdMappings[issue.Type]
-	issue.StdType = mappings.stdTypeMappings[issue.Type]
+	issue.Type = mappings.TypeIdMappings[issue.Type]
+	issue.StdType = mappings.StdTypeMappings[issue.Type]
 	if issue.StdType == "" {
 		issue.StdType = strings.ToUpper(issue.Type)
 	}
 	issue.StdStatus = getStdStatus(issue.StatusKey)
-	if value, ok := mappings.standardStatusMappings[issue.Type][issue.StatusKey]; ok {
+	if value, ok := mappings.StandardStatusMappings[issue.Type][issue.StatusKey]; ok {
 		issue.StdStatus = value.StandardStatus
 	}
 	// issue commments
-	logger.Debug("appending issue %v", issue.IssueId)
 	results = append(results, issue)
 	for _, comment := range comments {
 		results = append(results, comment)
@@ -176,7 +197,6 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 			results = append(results, user)
 		}
 	}
-	logger.Debug("appending jiraBoardissue %v to %v", issue.IssueId,data.Options.BoardId)
 	results = append(results, &models.JiraBoardIssue{
 		ConnectionId: data.Options.ConnectionId,
 		BoardId:      data.Options.BoardId,
@@ -199,6 +219,15 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 		componentNames = append(componentNames, v.Name)
 	}
 	issue.Components = strings.Join(componentNames, ",")
+
+	// fix versions
+	fixVersions := apiIssue.Fields.FixVersions
+	var fixVersionsNames []string
+	for _, v := range fixVersions {
+		fixVersionsNames = append(fixVersionsNames, v.Name)
+	}
+	issue.FixVersions = strings.Join(fixVersionsNames, ",")
+
 	// issuelinks
 	issuelinks := apiIssue.Fields.Issuelinks
 	for _, v := range issuelinks {
@@ -217,6 +246,10 @@ func extractIssues(data *JiraTaskData, mappings *typeMappings, row *api.RawData,
 		}
 		results = append(results, issueLink)
 	}
+
+	// is subtask
+	issue.Subtask = apiIssue.Fields.Issuetype.Subtask
+
 	return results, nil
 }
 
@@ -243,8 +276,8 @@ func getTypeMappings(data *JiraTaskData, db dal.Dal) (*typeMappings, errors.Erro
 		}
 	}
 	return &typeMappings{
-		typeIdMappings:         typeIdMapping,
-		stdTypeMappings:        stdTypeMappings,
-		standardStatusMappings: standardStatusMappings,
+		TypeIdMappings:         typeIdMapping,
+		StdTypeMappings:        stdTypeMappings,
+		StandardStatusMappings: standardStatusMappings,
 	}, nil
 }
