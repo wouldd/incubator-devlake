@@ -15,18 +15,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package crossdomain
+package migrationscripts
 
 import (
-	"github.com/apache/incubator-devlake/core/models/domainlayer"
+	"github.com/apache/incubator-devlake/core/context"
+	"github.com/apache/incubator-devlake/core/errors"
+	"github.com/apache/incubator-devlake/core/plugin"
 )
 
-type ProjectIssueMetric struct {
-	domainlayer.DomainEntity
-	ProjectName  string `gorm:"primaryKey;type:varchar(100)"`
-	DeploymentId string
+var _ plugin.MigrationScript = (*addChangesToPr)(nil)
+
+type prChange20240710 struct {
+	Additions int
+	Deletions int
 }
 
-func (ProjectIssueMetric) TableName() string {
-	return "project_issue_metrics"
+func (prChange20240710) TableName() string {
+	return "pull_requests"
+}
+
+type addChangesToPr struct{}
+
+func (*addChangesToPr) Up(basicRes context.BasicRes) errors.Error {
+	db := basicRes.GetDal()
+	if err := db.AutoMigrate(&prChange20240710{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (*addChangesToPr) Version() uint64 {
+	return 20240710142100
+}
+
+func (*addChangesToPr) Name() string {
+	return "add additions and deletions to pr"
 }

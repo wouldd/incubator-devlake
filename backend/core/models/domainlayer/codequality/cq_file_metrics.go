@@ -1,3 +1,4 @@
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one or more
 contributor license agreements.  See the NOTICE file distributed with
@@ -24,7 +25,7 @@ import (
 type CqFileMetrics struct {
 	domainlayer.DomainEntity
 	ProjectKey                          string `gorm:"index;type:varchar(255)"` //domain project key
-	FileName                            string `gorm:"type:varchar(255)"`
+	FileName                            string `gorm:"type:varchar(2000)"`
 	FilePath                            string
 	FileLanguage                        string `gorm:"type:varchar(20)"`
 	CodeSmells                          int
